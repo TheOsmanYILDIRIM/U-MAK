@@ -1,0 +1,2 @@
+# Uzmanlıklar ve tecrübe
+Alt uzmanlık ağaçları **yok**. Genel ana alan adayları: keşif, hücum, savunma, manevra, baskın, gizlilik, menzilli savaş, kuşatma, ikmal, sağlık. Uzmanlıklar birbirini aktif buff'lamaz. Yapılan görev XP verir; puanın bölümü 2–3 yakın ana uzmanlığa eylem bazlı doğrudan yazılabilir. Örnek başarılı keşif: 80 keşif / 15 gizlilik / 5 manevra (denge kararı değil). Birliğin tarihsel tipi, donanımı, eğitim/uzmanlık ve anlık morali ayrı. Savaş içinde ve sonrasında tecrübe, komutan tecrübesi, gazi kaybı ve takviye etkileri. Salt öldürme odaklı XP yok.
