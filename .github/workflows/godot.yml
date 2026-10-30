@@ -31,7 +31,7 @@ jobs:
           echo "GODOT=/tmp/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64" >> "$GITHUB_ENV"
           sudo apt-get update -qq
           sudo apt-get install -y xvfb libgl1-mesa-dri
-      - name: Core, 4-peer ENet, touch UI and actual screenshots
+      - name: Core, four ENet peers, touch UI and screenshots
         env:
           UCMAK_REPORTS: ${{ github.workspace }}/build/reports
           LIBGL_ALWAYS_SOFTWARE: 1
@@ -52,6 +52,11 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
+      - name: Reuse development-only APK signing identity
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: ucmak-development-keystore-v1-${{ github.ref_name }}
       - name: Editor, templates and Android prerequisites
         shell: bash
         run: |
@@ -69,7 +74,10 @@ jobs:
           unzip -jo /tmp/templates.tpz 'templates/android_debug.apk' 'templates/android_release.apk' 'templates/linux_debug.x86_64' 'templates/linux_release.x86_64' 'templates/version.txt' -d "$DEST"
           rm /tmp/templates.tpz
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platform-tools' 'build-tools;35.0.0' 'platforms;android-35'
-          keytool -genkeypair -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 365 -dname 'CN=Ucmak Debug,O=Ucmak,C=TR'
+          if [ ! -f "$HOME/.android/debug.keystore" ]; then
+            keytool -genkeypair -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 3650 -dname 'CN=Ucmak Debug,O=Ucmak,C=TR'
+            echo '::warning::Development signing cache was absent. Older APKs may require reinstall; production signing is not configured.'
+          fi
           mkdir -p "$HOME/.config/godot"
           python3 - <<'PY'
           import os, pathlib
@@ -81,16 +89,16 @@ jobs:
         run: |
           set -euo pipefail
           "$GODOT" --headless --editor --path game/godot --quit
-          "$GODOT" --headless --path game/godot --export-debug Android "$GITHUB_WORKSPACE/build/Ucmak-v0.4-android.apk" 2>&1 | tee build/android-export.log
-          test -s build/Ucmak-v0.4-android.apk
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose build/Ucmak-v0.4-android.apk | tee build/apk-signature.txt
-          "$GODOT" --headless --path game/godot --export-release Linux "$GITHUB_WORKSPACE/build/Ucmak-v0.4.x86_64" 2>&1 | tee build/linux-export.log
-          test -s build/Ucmak-v0.4.x86_64
-          chmod +x build/Ucmak-v0.4.x86_64
-          timeout 20 build/Ucmak-v0.4.x86_64 --headless --quit-after 40 2>&1 | tee build/export-smoke.log
+          "$GODOT" --headless --path game/godot --export-debug Android "$GITHUB_WORKSPACE/build/Ucmak-v0.4.1-android.apk" 2>&1 | tee build/android-export.log
+          test -s build/Ucmak-v0.4.1-android.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs build/Ucmak-v0.4.1-android.apk | tee build/apk-signature.txt
+          "$GODOT" --headless --path game/godot --export-release Linux "$GITHUB_WORKSPACE/build/Ucmak-v0.4.1.x86_64" 2>&1 | tee build/linux-export.log
+          test -s build/Ucmak-v0.4.1.x86_64
+          chmod +x build/Ucmak-v0.4.1.x86_64
+          timeout 20 build/Ucmak-v0.4.1.x86_64 --headless --quit-after 40 2>&1 | tee build/export-smoke.log
           if grep -E 'SCRIPT ERROR|Parse Error' build/*export.log build/export-smoke.log; then exit 1; fi
-          zip -j build/Ucmak-v0.4-linux.zip build/Ucmak-v0.4.x86_64
-          git archive --format=zip -o build/Ucmak-v0.4-source.zip HEAD
+          zip -j build/Ucmak-v0.4.1-linux.zip build/Ucmak-v0.4.1.x86_64
+          git archive --format=zip -o build/Ucmak-v0.4.1-source.zip HEAD
           sha256sum build/*.apk build/*.zip > build/SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
@@ -113,9 +121,9 @@ jobs:
           pattern: '*-${{ github.sha }}'
           path: release
           merge-multiple: true
-      - name: Publish this verified build as a prerelease
+      - name: Publish verified development build
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          gh release create "ucmak-0.4-${GITHUB_RUN_NUMBER}" --target "$GITHUB_SHA" --prerelease --title "UÇMAK 0.4 · Godot playable build ${GITHUB_RUN_NUMBER}" --notes 'Native Android debug APK and Linux build. Core, four-process ENet, touch UI and screenshots tested in GitHub Actions. Physical phone performance and public internet matchmaking are not yet validated.' release/*.apk release/*.zip release/*.png release/SHA256SUMS.txt release/acceptance.json
+          gh release create "ucmak-0.4.1-${GITHUB_RUN_NUMBER}" --target "$GITHUB_SHA" --prerelease --title "UÇMAK 0.4.1 · Godot build ${GITHUB_RUN_NUMBER}" --notes 'Native ARM64 Android debug APK and Linux build. Core, four-process ENet, four touch viewports and actual screenshots tested in GitHub Actions. AI skirmish and direct-IP 2–4 player multiplayer. No public matchmaking or physical-phone acceptance yet. Development signing cache is not production signing.' release/*.apk release/*.zip release/*.png release/SHA256SUMS.txt release/acceptance.json

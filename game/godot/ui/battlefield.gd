@@ -10,6 +10,7 @@ var data: Dictionary={}
 var team=0
 var selected_wing=1
 var selected_unit=-1
+var all_wings=false
 var tool="select"
 var center=Vector2(700,700)
 var zoom=0.5
@@ -29,6 +30,7 @@ var trees: Array=[]
 var grass: Array=[]
 var font: Font
 var elapsed=0.0
+var visual_positions: Dictionary={}
 
 func _ready():
     mouse_filter=Control.MOUSE_FILTER_STOP
@@ -73,8 +75,15 @@ func zoom_at(point:Vector2,ratio:float):
     center=anchor-(point-size/2)/zoom
     constrain(); queue_redraw()
 
+func selected_wings() -> Array:
+    return Session.owned.duplicate() if all_wings else [selected_wing]
+
+func select_army():
+    all_wings=true; selected_unit=-1; cancel()
+    selection_changed.emit()
+
 func select_wing(id:int):
-    selected_wing=id; selected_unit=-1; cancel()
+    selected_wing=id; selected_unit=-1; all_wings=false; cancel()
     selection_changed.emit()
 
 func unit(id:int) -> Dictionary:
@@ -88,23 +97,34 @@ func wing() -> Dictionary:
     return {}
 
 func begin(next_tool:String):
-    cancel(); tool=next_tool
+    cancel()
+    if next_tool=="line" and all_wings:
+        hint.emit("Hat çizmek için önce Sol, Merkez veya Sağ kanadı seç.")
+        return
+    tool=next_tool
     hint.emit("Hattı çiz; önizlemeyi onayla." if tool=="line" else "Hedef konuma dokun. İki parmak her zaman kamerayı yönetir.")
     queue_redraw()
 
 func cancel():
-    tool="select"; preview=[]; drag_points=[]; editing=-1
+    tool="select"; preview=[]; preview_error=""; drag_points=[]; editing=-1
     preview_changed.emit(); queue_redraw()
 
 func confirm():
-    if preview.is_empty() or preview_error!="": return
-    Session.send({"type":"line","wings":[selected_wing],"points":preview.duplicate()})
-    cancel()
+    if preview.is_empty() or preview_error!="" or all_wings: return
+    if Session.send({"type":"line","wings":[selected_wing],"points":preview.duplicate()}): cancel()
 
 func _process(dt):
     elapsed+=dt
     for m in markers: m.age+=dt
     markers=markers.filter(func(m): return m.age<1.2)
+    # Rendering smooths only permitted snapshots; no positions are simulated here.
+    var visible={}
+    for u in data.get("units",[]):
+        visible[u.id]=true
+        var old:Vector2=visual_positions.get(u.id,u.pos)
+        visual_positions[u.id]=u.pos if old.distance_to(u.pos)>160 else old.lerp(u.pos,1.0-exp(-18.0*dt))
+    for id in visual_positions.keys():
+        if not visible.has(id): visual_positions.erase(id)
     queue_redraw()
 
 func _gui_input(event):
@@ -133,7 +153,7 @@ func pointer_down(id:int,p:Vector2):
         preview_changed.emit(); return
     gesture=false; moved=false; start_screen=p; previous_screen=p; editing=-1
     if tool=="line": drag_points=[Terrain.safe(world(p))]
-    elif tool=="select" and selected_unit<0:
+    elif tool=="select" and selected_unit<0 and not all_wings:
         var w=wing()
         if not w.is_empty() and selected_wing in Session.owned:
             var handles=[w.points.front(),Terrain.along(w.points,0.5),w.points.back()]
@@ -190,18 +210,18 @@ func pointer_up(id:int,p:Vector2,cancelled:bool=false):
     if moved: return
     var q=Terrain.safe(world(p))
     if tool=="advance":
-        Session.send({"type":"advance","wings":[selected_wing],"point":q}); mark(q); cancel()
+        if Session.send({"type":"advance","wings":selected_wings(),"point":q}): mark(q); cancel()
     elif tool in ["attack","move","retreat","supply","scout"] and selected_unit>=0:
-        Session.send({"type":"mission","unit":selected_unit,"kind":tool,"point":q}); mark(q); cancel()
+        if Session.send({"type":"mission","unit":selected_unit,"kind":tool,"point":q}): mark(q); cancel()
     else:
         var picked={}
         var nearest=27.0
         for u in data.get("units",[]):
             if u.team!=team or u.men<=5: continue
-            var d=screen(u.pos).distance_to(p)
+            var d=screen(visual_positions.get(u.id,u.pos)).distance_to(p)
             if d<nearest: picked=u; nearest=d
         if not picked.is_empty():
-            selected_unit=picked.id; selected_wing=picked.wing; cancel(); selection_changed.emit()
+            selected_unit=picked.id; selected_wing=picked.wing; all_wings=false; cancel(); selection_changed.emit()
         else:
             selected_unit=-1; selection_changed.emit()
     queue_redraw()
@@ -234,7 +254,6 @@ func _draw():
     draw_rect(Rect2(Vector2.ZERO,Terrain.SIZE),Color("858f6a"))
     for item in grass:
         draw_circle(item[0],item[1],Color(0.28,0.36,0.24,0.2))
-    # Soft ground patches and contour rings, no downloaded assets.
     for e in Terrain.HILLS:
         for r in range(5,0,-1):
             var pts=PackedVector2Array()
@@ -282,31 +301,35 @@ func _draw():
         var p=screen(ghost.pos)
         draw_arc(p,19,0,TAU,24,Color(0.93,0.56,0.46,0.4),1.5)
         draw_string(font,p+Vector2(-5,5),"?",HORIZONTAL_ALIGNMENT_LEFT,-1,18,ENEMY)
+    var chosen_wings=selected_wings()
     for w in data.get("wings",[]):
-        var chosen=w.id==selected_wing
+        var chosen=w.id in chosen_wings
         var pts=PackedVector2Array()
         for p in w.points: pts.append(screen(p))
         draw_polyline(pts,Color(FRIEND,0.85 if chosen else 0.3),3.5 if chosen else 1.5,true)
-        if chosen and selected_unit<0 and preview.is_empty():
+        if chosen and selected_unit<0 and not all_wings and preview.is_empty():
             for p in [w.points.front(),Terrain.along(w.points,0.5),w.points.back()]:
                 draw_circle(screen(p),11,Color("183c37")); draw_arc(screen(p),11,0,TAU,24,FRIEND,2)
-            var n=Vector2.UP if w.team==0 else Vector2.DOWN
+            var d=w.points.back()-w.points.front()
+            var n=Vector2(-d.y,d.x).normalized()
+            if n.y*(1 if w.team==1 else -1)<0: n=-n
             if w.flipped: n=-n
             var c=screen(Terrain.along(w.points,0.5))
+            var side=Vector2(-n.y,n.x)
             draw_line(c,c+n*30,FRIEND,2,true)
-            draw_line(c+n*30,c+n*21+Vector2(5,0),FRIEND,2,true)
+            draw_line(c+n*30,c+n*21+side*5,FRIEND,2,true)
     for u in data.get("units",[]):
         if u.men<=5: continue
         var own=u.team==team
         var color=FRIEND if own else ENEMY
-        var p=screen(u.pos)
+        var p=screen(visual_positions.get(u.id,u.pos))
         if not Rect2(Vector2(-60,-60),size+Vector2(120,120)).has_point(p): continue
         var chosen=u.id==selected_unit
         if chosen:
             draw_arc(p,26,0,TAU,40,GOLD,2.5,true)
             var m=u.get("mission",{})
             if not m.is_empty(): dashed(p,screen(m.point),GOLD,2); draw_circle(screen(m.point),6,GOLD)
-        elif own and u.wing==selected_wing:
+        elif own and u.wing in chosen_wings:
             draw_circle(p,23,Color(0.12,0.38,0.38,0.18))
         var count=clampi(ceili(u.men/6),2,18)
         var spacing=clampf(6*zoom,2.3,8)
@@ -327,6 +350,7 @@ func _draw():
             draw_rect(Rect2(p+Vector2(-18,17),Vector2(36*u.morale/100,3)),Color("e6b477") if u.morale<40 else Color("aed5a9"))
             if u.state=="routed": label(p+Vector2(0,38),"ÇÖZÜLDÜ",ENEMY,9)
             elif not u.get("mission",{}).is_empty(): draw_circle(p+Vector2(21,-18),3.5,GOLD)
+            elif u.get("slot","")=="r0": draw_string(font,p+Vector2(20,-16),"R",HORIZONTAL_ALIGNMENT_LEFT,-1,10,GOLD)
         if u.hit>0: draw_arc(p,20,0,TAU,20,Color(1,0.92,0.7,u.hit*3),2)
     for f in data.get("effects",[]):
         var a=screen(f.a); var b=screen(f.b)
@@ -344,7 +368,6 @@ func _draw():
             draw_rect(Rect2(p-Vector2(13,9),Vector2(26,18)),Color(color,0.22))
             draw_rect(Rect2(p-Vector2(13,9),Vector2(26,18)),color,false,1.5)
     for m in markers: draw_arc(screen(m.pos),12+m.age*20,0,TAU,32,Color(GOLD,1-m.age/1.2),2)
-    # Mini-map reflects only the player's permitted snapshot.
     var mini=Rect2(size-Vector2(117,111),Vector2(108,102))
     draw_style_box(tag_style(),mini)
     var factor=Vector2(mini.size.x/1400,mini.size.y/1320)

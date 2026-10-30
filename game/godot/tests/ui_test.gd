@@ -35,7 +35,7 @@ func run(root) -> bool:
     await root.get_tree().process_frame
     await root.get_tree().process_frame
     print("UI_LAYOUT dock=",root.dock.get_rect()," minimum=",root.dock.get_combined_minimum_size()," root=",root.size)
-    check(root.dock.position.y>=0 and root.dock.position.y+root.dock.size.y<=root.size.y+2,"dock fits viewport")
+    check(root.dock.position.y>=0 and root.dock.position.y+root.dock.size.y<=root.size.y+2 and root.dock.position.x+root.dock.size.x<=root.size.x+2,"dock fits viewport")
     var touches=InputEventScreenTouch.new(); touches.index=2; touches.position=f.size/2; touches.pressed=true
     f._gui_input(touches)
     touches.pressed=false; touches.canceled=true; f._gui_input(touches)
@@ -43,6 +43,23 @@ func run(root) -> bool:
     var saved=Session.view
     Session.view={}; root.refresh()
     check(f.data.is_empty(),"empty network snapshot never reveals enemy preview")
+    f._process(0.1)
+    check(f.visual_positions.is_empty(),"hidden positions removed from render interpolation")
     Session.view=saved; root.refresh()
+    f.select_army()
+    check(f.all_wings and f.selected_unit<0 and f.selected_wings()==Session.owned,"army selection uses only owned wings")
+    f.begin("line")
+    check(f.tool=="select","whole army cannot accidentally replace a single line")
+    f.begin("advance")
+    var target=f.screen(Vector2(700,980))
+    f.pointer_down(0,target); f.pointer_up(0,target)
+    check(Session.battle.queue.back().type=="advance" and Session.battle.queue.back().wings==Session.owned,"touch army order sends the whole selected group")
+    f.select_wing(1)
+    check(not f.all_wings and f.selected_wings()==[1],"single wing selection restores precise control")
+    root.show_reports()
+    check(root.is_menu_open and root.modal_box.get_child_count()>3,"report history opens with real simulation entries")
+    root.close_modal()
+    check(not root.is_menu_open,"report history closes back to live battle")
+    await root.get_tree().process_frame
     print("UI_RESULT passed=",passed," failed=",failed," viewport=",root.size)
     return failed==0

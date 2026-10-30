@@ -5,7 +5,7 @@ signal notice(text: String)
 const Battle = preload("res://core/battle.gd")
 const Wire = preload("res://core/wire.gd")
 const PORT = 24642
-const PROTOCOL = 5
+const PROTOCOL = 6
 var battle = Battle.new()
 var view: Dictionary={}
 var players: Dictionary={}
@@ -71,7 +71,7 @@ func _connected():
     _hello.rpc_id(1,PROTOCOL)
 
 func _peer_connected(_id:int):
-    pass # Join is authenticated by the protocol handshake, not by a client-provided team.
+    pass # Team ownership is assigned by the host, never supplied by a client.
 
 @rpc("any_peer","call_remote","reliable")
 func _hello(protocol:int):
@@ -152,7 +152,7 @@ func send(order:Dictionary) -> bool:
         _command.rpc_id(1,order,match_id)
         return true
     var accepted=battle.submit(order,ownership(1))
-    if not accepted: notice.emit("Emir uygulanamadı; seçim, yetki ve araziyi kontrol et.")
+    if not accepted: notice.emit(battle.last_rejection)
     return accepted
 
 @rpc("any_peer","call_remote","reliable")
@@ -166,7 +166,7 @@ func _command(order:Dictionary,id:int):
     rate.n+=1; rates[sender]=rate
     if rate.n>20 or var_to_bytes(order).size()>4096: return
     var accepted=battle.submit(order,ownership(sender))
-    if not accepted: _order_error.rpc_id(sender,"Emir reddedildi: yetki, durum veya arazi uygun değil.")
+    if not accepted: _order_error.rpc_id(sender,battle.last_rejection)
 
 @rpc("authority","call_remote","reliable")
 func _order_error(reason:String):

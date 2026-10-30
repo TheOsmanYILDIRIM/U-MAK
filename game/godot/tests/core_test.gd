@@ -87,5 +87,71 @@ func run():
         if not out.is_empty(): decoded=out
     check(decoded.get("state",{})==snap and decoded.get("owned",[])==[0,1,2],"out of order chunks reassemble exact snapshot")
     check(transport.consume(snap.tick,0,chunks.size(),chunks[0]).is_empty(),"old snapshot is ignored")
+    regressions()
     print("CORE_RESULT passed=",passed," failed=",failed," stress_ms=",Time.get_ticks_msec()-started)
     quit(0 if failed==0 else 1)
+
+func regressions():
+    var b=Battle.new(); b.ai_teams=[]
+    check(not b.submit({"type":"hold","wings":[1,1]},[0,1,2]),"duplicate wing IDs rejected")
+    check(not b.submit({"type":"mission","unit":6,"wings":[0],"kind":"attack","point":Vector2(700,900)},[0,1,2]),"mission cannot stamp another wing plan")
+    check(b.submit({"type":"hold","wings":[0],"seq":999,"at":-900.0,"damage":999},[0,1,2]),"valid intent canonicalized")
+    check(b.queue[0].seq==1 and b.queue[0].at>0 and not b.queue[0].has("damage"),"client authority fields discarded")
+    b.reset(); b.ai_teams=[]
+    check(b.submit({"type":"advance","wings":[0,1,2],"point":Vector2(850,800)},[0,1,2]),"whole army translation accepted")
+    advance(b,0.5)
+    check(b.wings[0].goal.is_equal_approx(Vector2(500,800)) and b.wings[1].goal.is_equal_approx(Vector2(850,800)) and b.wings[2].goal.is_equal_approx(Vector2(1200,800)),"whole army keeps lateral spacing rather than stacking")
+    b.reset(); b.ai_teams=[]
+    b.execute({"type":"advance","wings":[0,1,2],"point":Vector2(1400,1320),"seq":1})
+    check(is_equal_approx(b.wings[2].goal.x-b.wings[0].goal.x,700.0) and b.wings[2].goal.x+132<=1364 and b.wings[2].goal.y<=1284,"group boundary clamp preserves formation width")
+    b.reset(); b.ai_teams=[]
+    b.submit({"type":"mission","unit":6,"kind":"scout","point":Vector2(500,900)},[0,1,2]); advance(b,0.8)
+    b.submit({"type":"advance","wings":[0,1,2],"point":Vector2(700,800)},[0,1,2]); advance(b,0.5)
+    check(b.units[6].mission.get("kind","")=="scout","army order preserves detached scout mission")
+    b.reset(); b.ai_teams=[]
+    b.submit({"type":"hold","wings":[1]},[0,1,2]); advance(b,0.3)
+    b.submit({"type":"flip","wings":[1]},[0,1,2]); advance(b,0.5)
+    check(b.wings[1].pending and b.queue.size()==1,"pending remains while second message is in transit")
+    advance(b,0.3)
+    check(not b.wings[1].pending,"pending clears only after all messages arrive")
+    b.reset(); b.ai_teams=[]
+    b.submit({"type":"mission","unit":6,"kind":"move","point":Vector2(700,950)},[0,1,2]); b.units[6].morale=0
+    advance(b,0.8)
+    check(b.units[6].mission.is_empty() and not b.wings[1].pending,"unexecutable routed-company order does not stick pending")
+    b.reset(); b.ai_teams=[]
+    check(not b.submit({"type":"mission","unit":0,"kind":"supply","point":Vector2(500,1050)},[0,1,2]) and b.last_rejection.contains("su kaynağı"),"dry supply target rejected with useful reason")
+    check(b.submit({"type":"mission","unit":0,"kind":"supply","point":Vector2(260,1015)},[0,1,2]),"well supply target accepted")
+    check(b.submit({"type":"mission","unit":1,"kind":"supply","point":Vector2(520,Terrain.river_y(520)+55)},[0,1,2]),"riverbank supply target accepted")
+    b.units[0].pos=Vector2(260,1015); b.units[0].water=10; b.units[0].engaged=true
+    b.units[0].mission={"kind":"supply","point":Vector2(260,1015)}
+    b.logistics()
+    check(b.units[0].water<=10 and b.units[0].xp["ikmal"]==0,"combat interrupts water collection")
+    var scout=Battle.new(); scout.ai_teams=[]
+    for x in scout.units:
+        if x.team==0: x.pos=Vector2(60,1220)
+        else: x.pos=Vector2(1320,60)
+    scout.units[0].mission={"kind":"scout","point":scout.units[0].pos}
+    for i in range(8): scout.logistics()
+    check(scout.units[0].xp["keşif"]==0,"empty waypoint cannot farm scouting XP")
+    scout.units[18].pos=Vector2(200,1180); scout.logistics()
+    var xp=scout.units[0].xp.duplicate()
+    check(is_equal_approx(xp["keşif"],0.8) and is_equal_approx(xp["gizlilik"],0.15) and is_equal_approx(xp["manevra"],0.05),"new contact shares action XP across three skills")
+    for i in range(8): scout.logistics()
+    check(scout.units[0].xp==xp,"known contact does not repeatedly grant XP")
+    var secret=Battle.new(); secret.ai_teams=[]
+    for x in secret.units:
+        if x.team==0: x.pos=Vector2(60,1220)
+        else: x.men=0
+    secret.units[18].men=100; secret.units[18].pos=Vector2(700,880)
+    secret.plan()
+    check(not secret.sees(0,secret.units[18]) and secret.wings[1].pressure==0,"hidden enemy cannot leak through wing pressure")
+    for i in range(105): secret.log_message(0,"TEST","bounded")
+    var ids=[]
+    for r in secret.reports: ids.append(r.id)
+    var unique={}
+    for id in ids: unique[id]=true
+    check(ids.size()==100 and unique.size()==100,"bounded report ring retains unique IDs")
+    secret.weather="Yağmur"; secret.reset()
+    check(secret.weather=="Açık","new match resets previous weather")
+    secret.winner=0
+    check(not secret.submit({"type":"hold","wings":[0]},[0,1,2]),"finished match cannot accept commands")

@@ -21,6 +21,8 @@ var queue: Array=[]
 var time=0.0
 var tick=0
 var sequence=0
+var report_sequence=0
+var last_rejection=""
 var winner=-1
 var control=0.0
 var ai_teams: Array=[1]
@@ -39,8 +41,8 @@ func _init(seed_value:int=1402):
 
 func reset(seed_value:int=1402):
     units.clear(); wings.clear(); reports.clear(); effects.clear(); queue.clear()
-    time=0; tick=0; sequence=0; winner=-1; control=0
-    next_plan=0; next_ai=4; next_logistics=0
+    time=0; tick=0; sequence=0; report_sequence=0; last_rejection=""; winner=-1; control=0
+    next_plan=0; next_ai=4; next_logistics=0; weather="Açık"
     contacts=[{},{}]; rng.seed=seed_value
     metrics={"orders":0,"rejected":0,"reserves":0,"hits":0,"ai":0,"paths":0}
     for team in range(2):
@@ -75,7 +77,8 @@ func reset(seed_value:int=1402):
     plan()
 
 func log_message(team:int,source:String,text:String,p:Vector2=Vector2(-1,-1)):
-    reports.push_front({"team":team,"source":source,"text":text,"pos":p,"time":time,"id":tick*100+reports.size()})
+    report_sequence+=1
+    reports.push_front({"team":team,"source":source,"text":text,"pos":p,"time":time,"id":report_sequence})
     if reports.size()>100: reports.resize(100)
 
 func facing(w:Dictionary) -> Vector2:
@@ -97,12 +100,19 @@ func slots_for(w:Dictionary) -> Array:
 func eligible(u:Dictionary) -> bool:
     return u.men>14 and u.state!="routed" and u.mission.is_empty()
 
-func reject() -> bool:
-    metrics.rejected+=1
+func reject(reason:String="Emir uygulanamadı; seçim, yetki veya konum uygun değil.") -> bool:
+    metrics.rejected+=1; last_rejection=reason
     return false
 
+func water_at(p:Vector2) -> bool:
+    for well in wells:
+        if p.distance_to(well.pos)<80: return true
+    return absf(p.y-Terrain.river_y(p.x))<85
+
 func submit(order:Dictionary,allowed_wings:Array) -> bool:
-    # Strict whitelist at the authority boundary, also used for local play.
+    # Normalize at the authority boundary. Client fields cannot stamp plan channels.
+    last_rejection=""
+    if winner>=0 or queue.size()>=128: return reject("Maç bitti veya emir kuyruğu dolu.")
     var type=order.get("type","")
     if not type in ["line","advance","hold","withdraw","flip","initiative","mission","return"]: return reject()
     var ids=order.get("wings",[])
@@ -110,41 +120,74 @@ func submit(order:Dictionary,allowed_wings:Array) -> bool:
     var uid=order.get("unit",-1)
     if not uid is int: return reject()
     if type in ["mission","return"]:
+        if not ids.is_empty(): return reject()
         if uid<0 or uid>=units.size() or not units[uid].wing in allowed_wings: return reject()
-        if units[uid].men<=5 or units[uid].state=="routed": return reject()
+        if units[uid].men<=5 or units[uid].state=="routed": return reject("Dağılan bölük önce toparlanmalı.")
         ids=[units[uid].wing]
     elif ids.is_empty(): return reject()
     for id in ids:
-        if not id is int or not id in allowed_wings or id<0 or id>=wings.size(): return reject()
+        if not id is int or not id in allowed_wings or id<0 or id>=wings.size() or ids.count(id)!=1: return reject()
     if type in ["advance","mission"]:
         var p=order.get("point",null)
         if not p is Vector2 or not p.is_finite() or p.x<0 or p.y<0 or p.x>1400 or p.y>1320: return reject()
     if type=="line":
         var points=order.get("points",[])
-        if not points is Array or ids.size()!=1 or Terrain.validate_line(points)!="": return reject()
+        if not points is Array or ids.size()!=1: return reject()
+        var error=Terrain.validate_line(points)
+        if error!="": return reject(error)
     if type=="initiative" and not order.get("value","") in ["strict","balanced","free"]: return reject()
-    if type=="mission" and not order.get("kind","") in ["attack","move","retreat","supply","scout"]: return reject()
-    var o=order.duplicate(true)
+    if type=="mission":
+        if not order.get("kind","") in ["attack","move","retreat","supply","scout"]: return reject()
+        if order.kind=="supply" and not water_at(Terrain.safe(order.point)):
+            return reject("Burada su kaynağı yok. Kuyuyu veya nehir kıyısını seç.")
+    var o={"type":type}
+    if type in ["mission","return"]: o.unit=uid
+    else: o.wings=ids.duplicate()
+    if type in ["advance","mission"]: o.point=order.point
+    if type=="line": o.points=order.points.duplicate()
+    if type=="mission": o.kind=order.kind
+    if type=="initiative": o.value=order.value
     sequence+=1
     o.seq=sequence; o.at=time+wings[ids[0]].commander.delay
     queue.append(o); metrics.orders+=1
-    for id in ids: wings[id].pending=true
+    refresh_pending()
     log_message(wings[ids[0]].team,"EMİR","Ulak yola çıktı; emir iletiliyor.",Terrain.along(wings[ids[0]].points,0.5))
     return true
+
+func refresh_pending():
+    for w in wings: w.pending=false
+    for o in queue:
+        if o.type in ["mission","return"]: wings[units[o.unit].wing].pending=true
+        else:
+            for id in o.get("wings",[]): wings[id].pending=true
+
+func group_shift(ids:Array,target:Vector2) -> Vector2:
+    # One rigid translation preserves spacing. Clamp the group, not each wing separately.
+    var center=Vector2.ZERO
+    var low=Vector2(INF,INF)
+    var high=Vector2(-INF,-INF)
+    for id in ids:
+        center+=Terrain.along(wings[id].points,0.5)
+        for p in wings[id].points:
+            low=low.min(p); high=high.max(p)
+    center/=float(ids.size())
+    return (target-center).clamp(Vector2(36,36)-low,Vector2(1364,1284)-high)
 
 func execute(o:Dictionary):
     var type=o.type
     var channel="initiative" if type=="initiative" else "facing" if type=="flip" else "plan"
     var ids=o.get("wings",[])
+    var shift=Vector2.ZERO
+    if type=="advance" and not ids.is_empty(): shift=group_shift(ids,o.point)
     for id in ids:
         var w=wings[id]
         if int(w.intents.get(channel,0))>o.seq: continue
-        w.intents[channel]=o.seq; w.pending=false
+        w.intents[channel]=o.seq
         match type:
             "line":
                 w.points=o.points.duplicate(); w.mode="hold"
             "advance":
-                w.goal=Terrain.safe(o.point); w.mode="advance"
+                w.goal=Terrain.along(w.points,0.5)+shift; w.mode="advance"
             "hold": w.mode="hold"
             "withdraw":
                 w.goal=Terrain.safe(Terrain.along(w.points,0.5)-facing(w)*180); w.mode="withdraw"
@@ -153,8 +196,10 @@ func execute(o:Dictionary):
         log_message(w.team,"ULAK",w.name+": emir alındı. Özel bölük görevleri korunuyor.",Terrain.along(w.points,0.5))
     if type in ["mission","return"]:
         var u=units[o.unit]
-        if u.seq>o.seq or u.state=="routed" or u.men<=5: return
-        u.seq=o.seq; wings[u.wing].pending=false
+        if u.seq>o.seq or u.state=="routed" or u.men<=5:
+            refresh_pending()
+            return
+        u.seq=o.seq
         if type=="return":
             u.mission={}; u.state="line"
         else:
@@ -162,6 +207,7 @@ func execute(o:Dictionary):
             u.state="special"
         u.path_goal=Vector2(-999,-999)
         log_message(u.team,"ULAK",u.name+(": kanat komutasına döndü." if type=="return" else ": bağımsız görev alındı."),u.pos)
+    refresh_pending()
     plan()
 
 func plan():
@@ -203,18 +249,25 @@ func plan():
         var strength=[0.0,0.0]
         for u in units:
             if u.men>5 and u.state!="routed" and u.pos.distance_to(c)<280:
-                strength[u.team]+=u.men*(0.35+u.morale/150.0)
+                if u.team==w.team:
+                    strength[u.team]+=u.men*(0.35+u.morale/150.0)
+                elif sees(w.team,u):
+                    # Pressure is an estimate from visible contacts, not an omniscient side channel.
+                    strength[u.team]+=roundf(u.men/20.0)*20.0*0.95
         w.pressure=clampf(strength[1-w.team]/maxf(20,strength[w.team]),0,3)
+
+func observes(own:Dictionary,u:Dictionary) -> bool:
+    if own.men<=5 or own.state=="routed": return false
+    var sight=480.0 if own.role=="cav" else 390.0
+    if Terrain.kind(own.pos)=="hill": sight+=80
+    if Terrain.kind(u.pos)=="forest": sight*=0.65
+    if weather=="Yağmur": sight*=0.82
+    return own.pos.distance_to(u.pos)<sight
 
 func sees(team:int,u:Dictionary) -> bool:
     if u.team==team: return true
     for own in units:
-        if own.team!=team or own.men<=5 or own.state=="routed": continue
-        var sight=480.0 if own.role=="cav" else 390.0
-        if Terrain.kind(own.pos)=="hill": sight+=80
-        if Terrain.kind(u.pos)=="forest": sight*=0.65
-        if weather=="Yağmur": sight*=0.82
-        if own.pos.distance_to(u.pos)<sight: return true
+        if own.team==team and observes(own,u): return true
     return false
 
 func enemy_brain():
@@ -293,19 +346,21 @@ func logistics():
             u.wounded-=healed; u.men=minf(u.max_men,u.men+healed); u.xp["sağlık"]+=healed
         if not u.mission.is_empty():
             var m=u.mission
-            if u.pos.distance_to(m.point)<45:
-                if m.kind=="supply":
-                    var water=false
-                    for well in wells:
-                        if u.pos.distance_to(well.pos)<80: water=true
-                    if absf(u.pos.y-Terrain.river_y(u.pos.x))<85: water=true
-                    if water:
-                        u.water=minf(100,u.water+4); u.xp["ikmal"]+=0.1
-                        if u.water>=99: u.mission={}; u.state="line"
-                if m.kind=="scout": u.xp["keşif"]+=0.08; u.xp["gizlilik"]+=0.02
+            if m.kind=="supply" and not u.engaged and u.pos.distance_to(m.point)<45 and water_at(u.pos):
+                var previous=u.water
+                u.water=minf(100,u.water+4)
+                u.xp["ikmal"]+=(u.water-previous)*0.025
+                if u.water>=99: u.mission={}; u.state="line"
         for team in range(2):
             if u.team!=team and sees(team,u):
-                if not contacts[team].has(u.id): log_message(team,"KEŞİF","Düşman "+ROLE[u.role].name.to_lower()+" birliği görüldü.",u.pos)
+                if not contacts[team].has(u.id):
+                    log_message(team,"KEŞİF","Düşman "+ROLE[u.role].name.to_lower()+" birliği görüldü.",u.pos)
+                    # Discovery awards XP once; waiting at an empty scout waypoint does not.
+                    for observer in units:
+                        if observer.team==team and observer.mission.get("kind","")=="scout" and observes(observer,u):
+                            observer.xp["keşif"]+=0.8
+                            observer.xp["gizlilik"]+=0.15
+                            observer.xp["manevra"]+=0.05
                 contacts[team][u.id]={"pos":u.pos,"time":time,"role":u.role}
 
 func step(dt:float):
@@ -315,6 +370,7 @@ func step(dt:float):
     for o in queue:
         if o.at<=time: due.append(o)
     for o in due: queue.erase(o); execute(o)
+    refresh_pending()
     if time>=next_ai: enemy_brain(); next_ai=time+3.5
     for w in wings:
         if not w.mode in ["advance","withdraw"]: continue
