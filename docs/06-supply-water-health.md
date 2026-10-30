@@ -27,3 +27,6 @@ Nehir: segment/akış grafiği; kuyu: kaynak düğümü; bölük: su stoku ve ih
 
 ## Açık kararlar
 Debi ve iklim katsayıları, kirlenme modeli, su alma hızları, erişim/kapasite, inşaat süreleri, kaynak tespiti ve karşı tedbir maliyetleri; tarihsel doğrulama ve oynanış dengesi gerektirir.
+
+## 2026-10-30 sağlık sadeleştirme kararı
+Sağlık ve sıhhiye **kalır fakat mikro yönetim sadeleşir**: ayrı asker tıbbi kayıtları, tek tek tedavi emirleri ve karmaşık hastalık ağacı yok. Bölük düzeyinde yaralı/hasta/etkin personel, bakım kapasitesi ve ikmal yükü yeterli başlangıç modelidir. Sağlık, 10 ana uzmanlıktan biri olmaya devam eder; kaynak kirlenmesi ve maruziyet somut nedenlerden doğar. Sıhhiye görevleri toplu/bölük emriyle yürür.
