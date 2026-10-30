@@ -3,8 +3,9 @@ extends Node
 signal changed
 signal notice(text: String)
 const Battle = preload("res://core/battle.gd")
+const Wire = preload("res://core/wire.gd")
 const PORT = 24642
-const PROTOCOL = 4
+const PROTOCOL = 5
 var battle = Battle.new()
 var view: Dictionary={}
 var players: Dictionary={}
@@ -21,6 +22,8 @@ var match_id=0
 var rates: Dictionary={}
 var receipts: Dictionary={}
 var last_error=""
+var wire=Wire.new()
+var max_chunk=0
 
 func _ready():
     multiplayer.peer_connected.connect(_peer_connected)
@@ -33,7 +36,7 @@ func stop():
     if multiplayer.multiplayer_peer: multiplayer.multiplayer_peer.close()
     multiplayer.multiplayer_peer=OfflineMultiplayerPeer.new()
     mode="idle"; phase="menu"; paused=false; view={}; players={}; rates={}; receipts={}
-    accumulator=0; last_tick=-1
+    accumulator=0; last_tick=-1; wire.clear(); max_chunk=0
     changed.emit()
 
 func offline():
@@ -143,6 +146,8 @@ func _started(id:int):
 
 func send(order:Dictionary) -> bool:
     if phase!="battle": return false
+    if mode!="client" and (battle.winner>=0 or battle.queue.size()>=128): return false
+    if mode=="client" and int(view.get("winner",-1))>=0: return false
     if mode=="client":
         _command.rpc_id(1,order,match_id)
         return true
@@ -152,7 +157,7 @@ func send(order:Dictionary) -> bool:
 
 @rpc("any_peer","call_remote","reliable")
 func _command(order:Dictionary,id:int):
-    if mode!="host" or phase!="battle" or id!=match_id: return
+    if mode!="host" or phase!="battle" or id!=match_id or battle.winner>=0 or battle.queue.size()>=128: return
     var sender=multiplayer.get_remote_sender_id()
     if not players.has(sender): return
     var now=Time.get_ticks_msec()
@@ -167,10 +172,18 @@ func _command(order:Dictionary,id:int):
 func _order_error(reason:String):
     notice.emit(reason)
 
-@rpc("authority","call_remote","unreliable_ordered",1)
-func _state(packet:Dictionary,id:int,permissions:Array):
-    if id!=match_id or phase!="battle" or int(packet.get("tick",-1))<=last_tick: return
-    last_tick=int(packet.tick); owned=permissions; view=packet
+func send_snapshot(peer:int,packet:Dictionary,permissions:Array):
+    var parts=Wire.pack(packet,permissions)
+    for i in range(parts.size()):
+        max_chunk=maxi(max_chunk,parts[i].size())
+        _state_chunk.rpc_id(peer,match_id,int(packet.tick),i,parts.size(),parts[i])
+
+@rpc("authority","call_remote","unreliable",1)
+func _state_chunk(id:int,sequence:int,index:int,total:int,chunk:PackedByteArray):
+    if id!=match_id or phase!="battle" or sequence<=last_tick: return
+    var message=wire.consume(sequence,index,total,chunk)
+    if message.is_empty(): return
+    last_tick=sequence; owned=message.owned; view=message.state
     changed.emit()
 
 func _process(delta:float):
@@ -186,7 +199,7 @@ func _process(delta:float):
         view=battle.snapshot(team)
         if mode=="host":
             for p in players:
-                if p!=1: _state.rpc_id(p,battle.snapshot(int(players[p])%2),match_id,ownership(p))
+                if p!=1: send_snapshot(p,battle.snapshot(int(players[p])%2),ownership(p))
         changed.emit()
 
 @rpc("any_peer","call_remote","reliable")

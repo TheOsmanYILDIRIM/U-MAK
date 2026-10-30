@@ -7,11 +7,13 @@ var field
 var top: PanelContainer
 var dock: PanelContainer
 var dock_content: VBoxContainer
+var action_grid: GridContainer
 var feed: Button
 var title: Label
 var detail: Label
 var status: Label
 var pause_button: Button
+var command_options: HBoxContainer
 var confirm_row: HBoxContainer
 var preview_label: Label
 var modal: ColorRect
@@ -71,6 +73,7 @@ func _ready():
     var fit=button("⊡",func(): field.fit()); fit.custom_minimum_size.x=46; head.add_child(fit)
     var menu=button("≡",open_menu); menu.custom_minimum_size.x=46; head.add_child(menu)
     dock=PanelContainer.new(); dock.add_theme_stylebox_override("panel",box(BG)); add_child(dock)
+    dock.minimum_size_changed.connect(func():call_deferred("layout_ui"))
     dock_content=VBoxContainer.new(); dock_content.add_theme_constant_override("separation",8); dock.add_child(dock_content)
     feed=button("KEŞİF  •  Raporlar burada akacak.",func():
         var reports=field.data.get("reports",[])
@@ -112,14 +115,14 @@ func _ready():
 func layout_ui():
     if field==null: return
     var landscape=size.x>size.y*1.15
+    if is_instance_valid(action_grid): action_grid.columns=2 if landscape else (3 if field.selected_unit>=0 else 4)
     top.position=Vector2(8,8); top.size=Vector2(size.x-16,72)
     if landscape:
         dock.position=Vector2(size.x-300,88); dock.size=Vector2(292,size.y-96)
         field.position=Vector2(0,84); field.size=Vector2(size.x-308,size.y-84)
         feed.position=Vector2(12,size.y-82); feed.size=Vector2(maxf(150,field.size.x-146),70)
     else:
-        var height=396.0 if field.selected_unit>=0 else 344.0
-        if not field.preview.is_empty(): height+=52
+        var height=maxf(396.0 if field.selected_unit>=0 else 344.0,dock.get_combined_minimum_size().y)
         dock.position=Vector2(8,size.y-height-8); dock.size=Vector2(size.x-16,height)
         field.position=Vector2(0,84); field.size=Vector2(size.x,dock.position.y-88)
         feed.position=Vector2(12,dock.position.y-78); feed.size=Vector2(maxf(150,size.x-146),66)
@@ -152,7 +155,8 @@ func refresh():
         elif Session.phase in ["menu","lobby","connecting"]: open_menu()
     if Session.phase=="lobby" and roster_size!=Session.players.size():
         roster_size=Session.players.size(); open_menu()
-    field.data=Session.view if not Session.view.is_empty() else Session.battle.snapshot(0,true)
+    # Never use the omniscient attract-mode preview while waiting for a network snapshot.
+    field.data=Session.view if Session.phase=="battle" else Session.battle.snapshot(0,true)
     field.team=Session.team
     if Session.phase=="battle" and not field.selected_wing in Session.owned:
         if not Session.owned.is_empty(): field.selected_wing=Session.owned[0]; field.selected_unit=-1; rebuild_dock()
@@ -173,10 +177,11 @@ func rebuild_dock():
         var b=button(["Sol","Merkez","Sağ"][i],func(): field.select_wing(id),id==field.selected_wing and field.selected_unit<0)
         b.disabled=Session.phase=="battle" and not id in Session.owned
         tabs.add_child(b)
-    title=text("Merkez",24,GOLD); dock_content.add_child(title)
+    title=text("Merkez",24,GOLD); title.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; dock_content.add_child(title)
     detail=text("Komutanınız hattı ve yedekleri yönetir.",13,Color("a9bca6")); detail.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; dock_content.add_child(detail)
-    status=text("",13); dock_content.add_child(status)
-    var actions=GridContainer.new(); actions.columns=3 if field.selected_unit>=0 else (2 if size.x>size.y*1.15 else 4)
+    status=text("",13); status.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; dock_content.add_child(status)
+    var actions=GridContainer.new(); action_grid=actions
+    actions.columns=2 if size.x>size.y*1.15 else (3 if field.selected_unit>=0 else 4)
     actions.add_theme_constant_override("h_separation",6); actions.add_theme_constant_override("v_separation",6)
     dock_content.add_child(actions)
     if field.selected_unit<0:
@@ -189,7 +194,7 @@ func rebuild_dock():
             var kind=pair[1]
             actions.add_child(button(pair[0],func():field.begin(kind),kind=="attack"))
         actions.add_child(button("Geri çağır",func(): Session.send({"type":"return","unit":field.selected_unit})))
-    var options=HBoxContainer.new(); dock_content.add_child(options)
+    var options=HBoxContainer.new(); command_options=options; dock_content.add_child(options)
     if field.selected_unit>=0:
         options.add_child(button("← Kanat",func():field.select_wing(field.selected_wing)))
     else:
@@ -210,9 +215,11 @@ func rebuild_dock():
 func update_preview():
     if confirm_row==null: return
     confirm_row.visible=not field.preview.is_empty()
+    if is_instance_valid(command_options): command_options.visible=field.preview.is_empty()
     confirm_row.get_child(0).disabled=field.preview_error!=""
     preview_label.text=field.preview_error if field.preview_error!="" and not field.preview.is_empty() else "Çiz → onayla → komutan uygulasın."
     layout_ui()
+    call_deferred("layout_ui")
 
 func update_status():
     if title==null: return

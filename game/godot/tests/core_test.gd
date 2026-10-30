@@ -1,6 +1,7 @@
 extends SceneTree
 const Battle=preload("res://core/battle.gd")
 const Terrain=preload("res://core/terrain.gd")
+const Wire=preload("res://core/wire.gd")
 var passed=0
 var failed=0
 func check(value:bool,name:String):
@@ -76,5 +77,15 @@ func run():
     check(victory.winner==0,"objective control ends match")
     var over=Battle.new(); over.match_limit=0.01; over.step(0.05)
     check(over.winner==2,"time limit resolves a tied match")
+    var transport=Wire.new()
+    var snap=battle.snapshot(0)
+    var chunks=Wire.pack(snap,[0,1,2])
+    check(chunks.all(func(part):return part.size()<=900),"snapshot chunks stay below MTU")
+    var decoded={}
+    for i in range(chunks.size()-1,-1,-1):
+        var out=transport.consume(snap.tick,i,chunks.size(),chunks[i])
+        if not out.is_empty(): decoded=out
+    check(decoded.get("state",{})==snap and decoded.get("owned",[])==[0,1,2],"out of order chunks reassemble exact snapshot")
+    check(transport.consume(snap.tick,0,chunks.size(),chunks[0]).is_empty(),"old snapshot is ignored")
     print("CORE_RESULT passed=",passed," failed=",failed," stress_ms=",Time.get_ticks_msec()-started)
     quit(0 if failed==0 else 1)

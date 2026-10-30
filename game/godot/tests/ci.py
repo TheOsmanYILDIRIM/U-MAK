@@ -5,7 +5,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 OUT = pathlib.Path(os.environ.get('UCMAK_REPORTS', str(ROOT / 'test-results'))).resolve()
 OUT.mkdir(parents=True, exist_ok=True)
 GODOT = os.environ.get('GODOT', 'godot')
-FORBIDDEN = ('SCRIPT ERROR:', 'Parse Error:', 'FAIL_UI ', 'NET_FAIL', 'NET_HOST_FAIL', 'FAIL ')
+FORBIDDEN = ('ERROR:', 'above the MTU', 'Parse Error:', 'FAIL_UI ', 'NET_FAIL', 'NET_HOST_FAIL', 'FAIL ')
 
 def run(name, args, seconds=90):
     result = subprocess.run(args, cwd=ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=seconds)
@@ -45,10 +45,10 @@ def main():
     if 'CORE_RESULT' not in core: raise RuntimeError('Core test completion not observed')
     network()
     for label, size in [('portrait','480x960'),('landscape','1200x800')]:
-        log = run('ui-'+label, ['xvfb-run','-a',GODOT,'--path',str(ROOT),'--resolution',size,'--','--ui-test'], 90)
+        log = run('ui-'+label, ['xvfb-run','-a',GODOT,'--audio-driver','Dummy','--path',str(ROOT),'--resolution',size,'--','--ui-test'], 90)
         if 'UI_RESULT' not in log: raise RuntimeError('UI test completion not observed')
         capture = str(OUT / (label + '.png'))
-        run('visual-'+label, ['xvfb-run','-a',GODOT,'--path',str(ROOT),'--resolution',size,'--','--visual-test','--capture='+capture], 90)
+        run('visual-'+label, ['xvfb-run','-a',GODOT,'--audio-driver','Dummy','--path',str(ROOT),'--resolution',size,'--','--visual-test','--capture='+capture], 90)
         if pathlib.Path(capture).stat().st_size < 1000: raise RuntimeError('Empty screenshot')
     (OUT/'acceptance.json').write_text(json.dumps({'core':True,'enet_peers':4,'ui_viewports':['480x960','1200x800'],'native_phone':False,'gpu':'CI software renderer'},indent=2))
     print('ACCEPTANCE_PASS: core, four ENet peers, UI, screenshots')

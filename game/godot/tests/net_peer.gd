@@ -21,9 +21,11 @@ func _process(dt):
             Session.start_match(); start_at=elapsed
         if start_at>0 and elapsed-start_at>9 and not checked:
             checked=true
-            var ok=Session.receipts.size()==3 and Session.battle.metrics.orders>=3 and Session.battle.metrics.rejected>=3
+            var ok=Session.receipts.size()==3 and Session.battle.metrics.orders>=3 and Session.battle.metrics.rejected>=3 and Session.max_chunk>0 and Session.max_chunk<=900
             for p in Session.receipts: ok=ok and bool(Session.receipts[p].get("safe",false))
-            print("NET_HOST_", "PASS" if ok else "FAIL", " peers=",Session.players.size()," receipts=",Session.receipts.size()," accepted=",Session.battle.metrics.orders," rejected=",Session.battle.metrics.rejected)
+            Session.battle.winner=0
+            ok=ok and not Session.send({"type":"hold","wings":[0]})
+            print("NET_HOST_", "PASS" if ok else "FAIL", " peers=",Session.players.size()," receipts=",Session.receipts.size()," accepted=",Session.battle.metrics.orders," rejected=",Session.battle.metrics.rejected," max_chunk=",Session.max_chunk)
             get_tree().quit(0 if ok else 1)
     else:
         if Session.phase=="battle" and not Session.view.is_empty():
