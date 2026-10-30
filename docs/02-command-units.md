@@ -1,0 +1,2 @@
+# Komuta ve bölükler
+En küçük simülasyon birimi yüzbaşının yönettiği bölük; referans 100 personel, farklı görevler için öneri 30–150. Tabur benzeri üst grup, kol/kanat, başkomutan; tarihsel 1402 adlandırması araştırılacak. Tek tek asker seçimi yok; bölüğe ve üst komutana emir verilir. Komutan becerileri, bölük tecrübesi ve personel ayrı kayıtlar. Komutan ölse de bölük hafızası sıfırlanmaz; acemi takviyesi uzmanlık ortalamasını seyreltebilir. 10.000 asker ≈ 100 adet 100 kişilik bölük, sadece ölçek örneği.
