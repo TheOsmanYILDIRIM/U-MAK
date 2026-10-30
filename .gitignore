@@ -1,0 +1,7 @@
+.godot/
+**/test-results/
+build/
+*.keystore
+*.apk
+*.x86_64
+export_credentials.cfg
