@@ -1,0 +1,2 @@
+# UÇMAK — Vizyon
+Mobil odaklı, 1402 Ankara Muharebesiyle başlayan tarihsel sefer/cephe stratejisi. Gerçek zamanlı Age of Empires benzeri bölük kontrolü; tekil asker seçimi, devlet yönetimi, teknoloji veya bina gelişimi yok. Savaş öncesi sınırlı hazırlık bütçesi, sefer sırasında ikmal-arazi-istihbarat-manevra, savaş sonrası kalıcı birlik/komutan gelişimi. Savaşmadan düşmanı geri çekilmeye zorlamak da zafer yolu. Sun Tzu ilkeleri fiziksel koşullara bağlı taktiklere dönüştürülür. İlk Osmanlı, sonra Timurlular ve yeni dönem paketleri. Tasarım, henüz prototip değil.
