@@ -40,7 +40,10 @@ func stop():
     changed.emit()
 
 func offline():
-    stop(); mode="local"; phase="battle"; team=0; seat=0; owned=[0,1,2]
+    # Initial local start must not re-open the menu or emit an extra menu event.
+    if mode!="idle": stop()
+    paused=false; accumulator=0; broadcast_timer=0
+    mode="local"; phase="battle"; team=0; seat=0; owned=[0,1,2]
     battle.reset(); battle.ai_teams=[1]; match_id+=1
     view=battle.snapshot(0)
     changed.emit()

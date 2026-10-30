@@ -27,6 +27,9 @@ var is_menu_open=false
 var toast: Label
 var toast_left=0.0
 var frame_times: Array=[]
+var training_button: Button
+var training_starting=false
+var metrics_elapsed=0.0
 
 func box(color:Color,border:Color=Color("37554a"),radius:int=12) -> StyleBoxFlat:
     var s=StyleBoxFlat.new(); s.bg_color=color
@@ -54,6 +57,8 @@ func button(value:String,callback:Callable,accent:bool=false) -> Button:
 
 func _ready():
     var args=OS.get_cmdline_user_args()
+    # Android compatibility drivers must not render unlimited frames.
+    if OS.has_feature("mobile") or OS.get_name()=="Android" or args.has("--mobile-lod"): Engine.max_fps=30
     if args.has("--test-host") or args.has("--test-client"):
         var harness=load("res://tests/net_peer.gd").new()
         add_child(harness)
@@ -93,6 +98,23 @@ func _ready():
     Session.notice.connect(show_hint)
     resized.connect(layout_ui)
     layout_ui(); rebuild_dock(); refresh()
+    if args.has("--smoke-training"):
+        await get_tree().process_frame
+        begin_training()
+        await get_tree().create_timer(3.0).timeout
+        var passed=Session.phase=="battle" and Session.battle.tick>20 and field.render_frames>=5
+        if passed:
+            print("SMOKE_TRAINING_PASS tick=",Session.battle.tick," frames=",field.render_frames)
+        else:
+            printerr("SMOKE_TRAINING_FAIL phase=",Session.phase," tick=",Session.battle.tick," frames=",field.render_frames)
+        get_tree().quit(0 if passed else 1)
+        return
+    if args.has("--startup-test"):
+        await get_tree().process_frame
+        var startup=load("res://tests/startup_test.gd").new()
+        var startup_ok=await startup.run(self)
+        get_tree().quit(0 if startup_ok else 1)
+        return
     if args.has("--visual-test") or args.has("--ui-test"):
         Session.offline(); field.selected_wing=1; field.selected_unit=-1
         Session.paused=true
@@ -148,6 +170,13 @@ func _process(dt):
     pause_button.disabled=Session.mode!="local"
     frame_times.append(dt)
     if frame_times.size()>120: frame_times.pop_front()
+    if Session.phase=="battle":
+        metrics_elapsed+=dt
+        if metrics_elapsed>=10.0:
+            metrics_elapsed=0.0
+            var fps=Performance.get_monitor(Performance.TIME_FPS)
+            print("UCMAK_PERF fps=%.1f draw_peak_ms=%.1f simulated_s=%.1f units=%d" % [fps,field.slowest_render_ms,Session.battle.time,field.data.get("units",[]).size()])
+            field.slowest_render_ms=0.0
 
 func show_hint(value:String):
     if toast==null: return
@@ -296,6 +325,19 @@ func show_reports():
         else: modal_box.add_child(text(heading,15,GOLD))
         paragraph(r.text)
 
+func begin_training():
+    if training_starting: return
+    training_starting=true
+    if is_instance_valid(training_button):
+        training_button.disabled=true
+        training_button.text="Muharebe hazırlanıyor…"
+    print("UCMAK_TRAINING_BEGIN t_ms=",Time.get_ticks_msec())
+    await get_tree().process_frame
+    var started=Time.get_ticks_msec()
+    Session.offline()
+    print("UCMAK_TRAINING_READY duration_ms=",Time.get_ticks_msec()-started," units=",Session.battle.units.size())
+    training_starting=false
+
 func open_menu():
     make_modal()
     modal_box.add_child(text("U Ç M A K",34,GOLD))
@@ -325,7 +367,8 @@ func open_menu():
         modal_box.add_child(button("İptal",func():Session.stop()))
     else:
         paragraph("Bir hattı yönet. Bir bölüğü göreve ayır. Yedeğin boşluğu kapatsın.\n\n18 dost ve 18 düşman bölüğü; nehir, keşif, moral ve gerçek zamanlı komuta.")
-        modal_box.add_child(button("Talime başla  ·  AI rakip",func():Session.offline(),true))
+        training_button=button("Talime başla  ·  AI rakip",begin_training,true)
+        modal_box.add_child(training_button)
         modal_box.add_child(button("Oda kur  ·  2–4 oyuncu",func():Session.host()))
         address=LineEdit.new(); address.placeholder_text="Sunucu IP adresi"; address.text="127.0.0.1"; address.custom_minimum_size.y=60
         modal_box.add_child(address)

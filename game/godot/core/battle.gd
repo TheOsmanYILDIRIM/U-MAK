@@ -26,7 +26,8 @@ var last_rejection=""
 var winner=-1
 var control=0.0
 var ai_teams: Array=[1]
-var metrics={"orders":0,"rejected":0,"reserves":0,"hits":0,"ai":0,"paths":0}
+var metrics={"orders":0,"rejected":0,"reserves":0,"hits":0,"ai":0,"paths":0,"path_deferred":0}
+var path_budget=6
 var rng=RandomNumberGenerator.new()
 var next_plan=0.0
 var next_ai=4.0
@@ -44,7 +45,8 @@ func reset(seed_value:int=1402):
     time=0; tick=0; sequence=0; report_sequence=0; last_rejection=""; winner=-1; control=0
     next_plan=0; next_ai=4; next_logistics=0; weather="Açık"
     contacts=[{},{}]; rng.seed=seed_value
-    metrics={"orders":0,"rejected":0,"reserves":0,"hits":0,"ai":0,"paths":0}
+    metrics={"orders":0,"rejected":0,"reserves":0,"hits":0,"ai":0,"paths":0,"path_deferred":0}
+    path_budget=6
     for team in range(2):
         for wi in range(3):
             var x=350.0+wi*350.0
@@ -311,6 +313,11 @@ func move_unit(u:Dictionary,goal:Vector2,dt:float):
     u.speed=0.0
     if u.pos.distance_to(goal)<6: return
     if time>=u.next_path and (u.path_goal.distance_to(goal)>35 or u.path.is_empty()):
+        # Expensive A* smoothing is spread over frames; never solve every company at once.
+        if path_budget<=0:
+            metrics.path_deferred+=1
+            return
+        path_budget-=1
         u.path=terrain.path(u.pos,goal); u.path_goal=goal; u.next_path=time+0.7; metrics.paths+=1
     while not u.path.is_empty() and u.pos.distance_to(u.path[0])<7: u.path.pop_front()
     if u.path.is_empty(): return
@@ -366,6 +373,7 @@ func logistics():
 func step(dt:float):
     if winner!=-1: return
     time+=dt; tick+=1
+    path_budget=6
     var due: Array=[]
     for o in queue:
         if o.at<=time: due.append(o)

@@ -31,21 +31,41 @@ var grass: Array=[]
 var font: Font
 var elapsed=0.0
 var visual_positions: Dictionary={}
+# Android draws a smaller LOD, not fewer simulated companies.
+var mobile_lod=false
+var redraw_clock=0.0
+var render_frames=0
+var slowest_render_ms=0.0
+var last_slow_render_log=-10.0
+var cached_hills: Array=[]
+var cached_river=PackedVector2Array()
+var cached_tag:StyleBoxFlat
 
 func _ready():
     mouse_filter=Control.MOUSE_FILTER_STOP
     clip_contents=true
     font=ThemeDB.fallback_font
+    mobile_lod=OS.has_feature("mobile") or OS.get_name()=="Android" or OS.get_cmdline_user_args().has("--mobile-lod")
+    cached_tag=tag_style()
     resized.connect(_resize)
     var rng=RandomNumberGenerator.new(); rng.seed=1402
-    for i in range(360):
+    for i in range(90 if mobile_lod else 240):
         var p=Vector2(rng.randf_range(25,1375),rng.randf_range(25,1295))
         grass.append([p,rng.randf_range(1,3)])
     for e in Terrain.FORESTS:
-        for i in range(38):
+        for i in range(12 if mobile_lod else 28):
             var angle=rng.randf()*TAU
             var r=sqrt(rng.randf())
             trees.append([Vector2(e.x+cos(angle)*e.z*r,e.y+sin(angle)*e.w*r),rng.randf_range(9,18)])
+    var ring_count=3 if mobile_lod else 5
+    for e in Terrain.HILLS:
+        for ring in range(ring_count,0,-1):
+            var contour=PackedVector2Array()
+            for i in range(49):
+                var a=TAU*i/48.0
+                contour.append(Vector2(e.x+cos(a)*e.z*ring/float(ring_count),e.y+sin(a)*e.w*ring/float(ring_count)))
+            cached_hills.append(contour)
+    for x in range(0,1401,14): cached_river.append(Vector2(x,Terrain.river_y(x)))
     _resize()
 
 func _resize():
@@ -115,6 +135,11 @@ func confirm():
 
 func _process(dt):
     elapsed+=dt
+    # Menu never needs continuously rebuilt terrain/units in the background.
+    if Session.phase!="battle": return
+    redraw_clock+=dt
+    if mobile_lod and redraw_clock<1.0/30.0: return
+    redraw_clock=0.0
     for m in markers: m.age+=dt
     markers=markers.filter(func(m): return m.age<1.2)
     # Rendering smooths only permitted snapshots; no positions are simulated here.
@@ -236,7 +261,7 @@ func dashed(a:Vector2,b:Vector2,color:Color,width:float=2.0):
 
 func label(p:Vector2,text:String,color:Color=Color("e9e5d1"),font_size:int=14):
     var width=font.get_string_size(text,HORIZONTAL_ALIGNMENT_LEFT,-1,font_size).x
-    draw_style_box(tag_style(),Rect2(p+Vector2(-width/2-5,-font_size-2),Vector2(width+10,font_size+8)))
+    draw_style_box(cached_tag,Rect2(p+Vector2(-width/2-5,-font_size-2),Vector2(width+10,font_size+8)))
     draw_string(font,p+Vector2(-width/2,0),text,HORIZONTAL_ALIGNMENT_LEFT,-1,font_size,color)
 
 func tag_style() -> StyleBoxFlat:
@@ -248,27 +273,23 @@ func tag_style() -> StyleBoxFlat:
 
 func _draw():
     if size.x<10 or font==null: return
+    var started_us=Time.get_ticks_usec()
+    render_frames+=1
+    var world_view=Rect2(center-size/(2.0*zoom)-Vector2(100,100),size/zoom+Vector2(200,200))
     draw_rect(Rect2(Vector2.ZERO,size),Color("394f45"))
     var offset=size/2-center*zoom
     draw_set_transform(offset,0,Vector2(zoom,zoom))
     draw_rect(Rect2(Vector2.ZERO,Terrain.SIZE),Color("858f6a"))
     for item in grass:
-        draw_circle(item[0],item[1],Color(0.28,0.36,0.24,0.2))
-    for e in Terrain.HILLS:
-        for r in range(5,0,-1):
-            var pts=PackedVector2Array()
-            for i in range(49):
-                var a=TAU*i/48.0
-                pts.append(Vector2(e.x+cos(a)*e.z*r/5.0,e.y+sin(a)*e.w*r/5.0))
-            draw_polyline(pts,Color(0.85,0.83,0.62,0.27),1.4/zoom,true)
+        if world_view.has_point(item[0]): draw_circle(item[0],item[1],Color(0.28,0.36,0.24,0.2))
+    for contour in cached_hills:
+        draw_polyline(contour,Color(0.85,0.83,0.62,0.27),1.4/zoom,true)
     draw_polyline(PackedVector2Array([Vector2(700,40),Vector2(680,300),Vector2(700,600),Vector2(690,950),Vector2(700,1290)]),Color("a3a079"),20,true)
     draw_polyline(PackedVector2Array([Vector2(90,200),Vector2(350,430),Vector2(350,660),Vector2(250,940),Vector2(60,1200)]),Color("a3a079"),13,true)
-    var river=PackedVector2Array()
-    for x in range(0,1401,14): river.append(Vector2(x,Terrain.river_y(x)))
-    draw_polyline(river,Color("435e50"),78,true)
-    draw_polyline(river,Color("b1b08b"),69,true)
-    draw_polyline(river,Color("538986"),60,true)
-    draw_polyline(river,Color(0.52,0.76,0.72,0.32),38,true)
+    draw_polyline(cached_river,Color("435e50"),78,true)
+    draw_polyline(cached_river,Color("b1b08b"),69,true)
+    draw_polyline(cached_river,Color("538986"),60,true)
+    draw_polyline(cached_river,Color(0.52,0.76,0.72,0.32),38,true)
     for x in range(10,1390,50):
         var xx=x+fmod(elapsed*8,30)
         draw_line(Vector2(xx,Terrain.river_y(xx)),Vector2(xx+18,Terrain.river_y(xx+18)+2),Color(0.8,0.87,0.75,0.4),1.4,true)
@@ -281,6 +302,7 @@ func _draw():
             draw_line(Vector2(x+40,y-42),Vector2(x+40,y+42),Color("d5c9a2"),6)
     for tree in trees:
         var p=tree[0]; var radius=tree[1]
+        if not world_view.has_point(p): continue
         draw_circle(p+Vector2(5,7),radius+4,Color(0.13,0.24,0.18,0.32))
         draw_circle(p,radius,Color("456c48"))
         draw_circle(p-Vector2(3,4),radius*0.62,Color("749365"))
@@ -331,18 +353,23 @@ func _draw():
             if not m.is_empty(): dashed(p,screen(m.point),GOLD,2); draw_circle(screen(m.point),6,GOLD)
         elif own and u.wing in chosen_wings:
             draw_circle(p,23,Color(0.12,0.38,0.38,0.18))
-        var count=clampi(ceili(u.men/6),2,18)
-        var spacing=clampf(6*zoom,2.3,8)
+        var detailed=not mobile_lod or zoom>0.85
+        var count=clampi(ceili(u.men/(8.0 if detailed else 14.0)),2,16 if detailed else 7)
+        var cols=6 if detailed else 4
+        var spacing=clampf(6*zoom,2.8,8)
         for j in range(count):
-            var local=Vector2((j%6-2.5)*spacing,(j/6-1)*spacing*1.2).rotated(u.angle+PI/2)
+            var local=Vector2((j%cols-(cols-1)*0.5)*spacing,(floori(float(j)/cols)-1)*spacing*1.2).rotated(u.angle+PI/2)
             var step=sin(elapsed*7+j)*1.1 if u.speed>1 else 0.0
             var q=p+local+Vector2(0,step)
-            draw_circle(q+Vector2(1,2),2.4,Color(0.08,0.16,0.13,0.4))
-            draw_line(q+Vector2(-1,1),q+Vector2(1,4),color,2)
-            draw_circle(q+Vector2(0,-1),1.6,Color("dac4a1"))
+            if detailed:
+                draw_circle(q+Vector2(1,2),2.4,Color(0.08,0.16,0.13,0.4))
+                draw_line(q+Vector2(-1,1),q+Vector2(1,4),color,2)
+                draw_circle(q+Vector2(0,-1),1.6,Color("dac4a1"))
+            else:
+                draw_circle(q,2.5,color)
         var symbol={"spear":"I","inf":"II","archer":"∿","cav":"◆"}[u.role]
         var box=Rect2(p+Vector2(-15,-29),Vector2(30,19))
-        draw_style_box(tag_style(),box)
+        draw_style_box(cached_tag,box)
         draw_rect(box,GOLD if chosen else color,false,1.6)
         draw_string(font,p+Vector2(-6,-14),symbol,HORIZONTAL_ALIGNMENT_LEFT,-1,14,color)
         if own:
@@ -377,3 +404,8 @@ func _draw():
     var top=(view_rect.position*factor+mini.position).clamp(mini.position,mini.end)
     var bottom=(view_rect.end*factor+mini.position).clamp(mini.position,mini.end)
     draw_rect(Rect2(top,bottom-top),Color(GOLD,0.6),false,1)
+    var draw_ms=(Time.get_ticks_usec()-started_us)/1000.0
+    slowest_render_ms=maxf(slowest_render_ms,draw_ms)
+    if mobile_lod and draw_ms>45.0 and elapsed-last_slow_render_log>5.0:
+        last_slow_render_log=elapsed
+        push_warning("UCMAK_SLOW_DRAW draw_ms=%.1f visible=%d zoom=%.2f" % [draw_ms,data.get("units",[]).size(),zoom])

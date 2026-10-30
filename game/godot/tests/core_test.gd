@@ -88,6 +88,14 @@ func run():
     check(decoded.get("state",{})==snap and decoded.get("owned",[])==[0,1,2],"out of order chunks reassemble exact snapshot")
     check(transport.consume(snap.tick,0,chunks.size(),chunks[0]).is_empty(),"old snapshot is ignored")
     regressions()
+    var paced=Battle.new(); paced.ai_teams=[]; paced.next_plan=999.0
+    for company in paced.units:
+        company.mission={"kind":"move","point":Terrain.safe(company.pos+Vector2(0,100 if company.team==1 else -100)),"start":0.0,"arrival":-1.0,"deadline":90.0}
+        company.next_path=0.0
+    paced.step(0.05)
+    check(paced.metrics.paths<=6 and paced.metrics.path_deferred>0,"pathfinding is bounded per simulation tick")
+    for n in range(10): paced.step(0.05)
+    check(paced.metrics.paths>=20,"deferred paths are eventually evaluated")
     print("CORE_RESULT passed=",passed," failed=",failed," stress_ms=",Time.get_ticks_msec()-started)
     quit(0 if failed==0 else 1)
 

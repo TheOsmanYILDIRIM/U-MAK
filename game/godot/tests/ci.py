@@ -44,6 +44,12 @@ def main():
     match = re.search(r'CORE_RESULT passed=(\d+) failed=(\d+)', core)
     if not match or int(match[2]): raise RuntimeError('Core test completion not observed')
     network()
+    startup_results = {}
+    for label, size in VIEWPORTS:
+        start = run('start-'+label, ['xvfb-run','-a',GODOT,'--audio-driver','Dummy','--path',str(ROOT),'--resolution',size,'--','--startup-test'] + (['--mobile-lod'] if label in ('compact','phone-wide') else []), 45)
+        probe = re.search(r'STARTUP_RESULT passed=(\d+) failed=(\d+)', start)
+        if not probe or int(probe[2]): raise RuntimeError('Training start did not finish')
+        startup_results[size] = int(probe[1])
     ui_results = {}
     for label, size in VIEWPORTS:
         log = run('ui-'+label, ['xvfb-run','-a',GODOT,'--audio-driver','Dummy','--path',str(ROOT),'--resolution',size,'--','--ui-test'], 90)
@@ -53,7 +59,7 @@ def main():
         capture = str(OUT / (label + '.png'))
         run('visual-'+label, ['xvfb-run','-a',GODOT,'--audio-driver','Dummy','--path',str(ROOT),'--resolution',size,'--','--visual-test','--capture='+capture], 90)
         if pathlib.Path(capture).stat().st_size < 1000: raise RuntimeError('Empty screenshot')
-    summary = {'commit':os.environ.get('GITHUB_SHA'), 'core_passed':int(match[1]), 'core_failed':int(match[2]), 'enet_peers':4, 'ui_passed':ui_results, 'native_phone':False, 'gpu':'CI software renderer', 'internet_matchmaking':False}
+    summary = {'commit':os.environ.get('GITHUB_SHA'), 'core_passed':int(match[1]), 'core_failed':int(match[2]), 'enet_peers':4, 'ui_passed':ui_results, 'startup_passed':startup_results, 'native_phone':False, 'gpu':'CI software renderer', 'internet_matchmaking':False}
     (OUT/'acceptance.json').write_text(json.dumps(summary,indent=2),encoding='utf-8')
     print('ACCEPTANCE_PASS: '+json.dumps(summary),flush=True)
 if __name__ == '__main__': main()
