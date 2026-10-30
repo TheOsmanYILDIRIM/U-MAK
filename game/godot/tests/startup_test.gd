@@ -23,6 +23,8 @@ func run(root:Control) -> bool:
     check(Session.battle.units.size()==36 and Session.view.units.size()>=18,"battle state and filtered snapshot initialized")
     check(not root.is_menu_open and not root.training_starting,"menu closed and start state released")
     check(Session.battle.tick>=before,"tick monotonic across start")
+    check(is_instance_valid(root.field.terrain_view),"terrain cache viewport exists")
+    check(root.field.terrain_view.size==Vector2i(1400,1320) and root.field.terrain_view.get_texture()!=null,"static terrain texture is available")
     var frame_start=root.field.render_frames
     var tick_start=Session.battle.tick
     await root.get_tree().create_timer(2.0).timeout

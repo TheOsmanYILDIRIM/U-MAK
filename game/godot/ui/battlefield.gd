@@ -3,6 +3,7 @@ signal selection_changed
 signal preview_changed
 signal hint(text: String)
 const Terrain=preload("res://core/terrain.gd")
+const TerrainLayer=preload("res://ui/terrain_layer.gd")
 const FRIEND=Color("7dced3")
 const ENEMY=Color("ee9075")
 const GOLD=Color("e1cb91")
@@ -26,8 +27,7 @@ var preview_error=""
 var moved=false
 var editing=-1
 var markers: Array=[]
-var trees: Array=[]
-var grass: Array=[]
+var terrain_view:SubViewport
 var font: Font
 var elapsed=0.0
 var visual_positions: Dictionary={}
@@ -37,8 +37,6 @@ var redraw_clock=0.0
 var render_frames=0
 var slowest_render_ms=0.0
 var last_slow_render_log=-10.0
-var cached_hills: Array=[]
-var cached_river=PackedVector2Array()
 var cached_tag:StyleBoxFlat
 
 func _ready():
@@ -48,24 +46,13 @@ func _ready():
     mobile_lod=OS.has_feature("mobile") or OS.get_name()=="Android" or OS.get_cmdline_user_args().has("--mobile-lod")
     cached_tag=tag_style()
     resized.connect(_resize)
-    var rng=RandomNumberGenerator.new(); rng.seed=1402
-    for i in range(90 if mobile_lod else 240):
-        var p=Vector2(rng.randf_range(25,1375),rng.randf_range(25,1295))
-        grass.append([p,rng.randf_range(1,3)])
-    for e in Terrain.FORESTS:
-        for i in range(12 if mobile_lod else 28):
-            var angle=rng.randf()*TAU
-            var r=sqrt(rng.randf())
-            trees.append([Vector2(e.x+cos(angle)*e.z*r,e.y+sin(angle)*e.w*r),rng.randf_range(9,18)])
-    var ring_count=3 if mobile_lod else 5
-    for e in Terrain.HILLS:
-        for ring in range(ring_count,0,-1):
-            var contour=PackedVector2Array()
-            for i in range(49):
-                var a=TAU*i/48.0
-                contour.append(Vector2(e.x+cos(a)*e.z*ring/float(ring_count),e.y+sin(a)*e.w*ring/float(ring_count)))
-            cached_hills.append(contour)
-    for x in range(0,1401,14): cached_river.append(Vector2(x,Terrain.river_y(x)))
+    terrain_view=SubViewport.new()
+    terrain_view.name="TerrainCache"
+    terrain_view.size=Vector2i(1400,1320)
+    terrain_view.disable_3d=true
+    terrain_view.render_target_update_mode=SubViewport.UPDATE_ONCE
+    add_child(terrain_view)
+    terrain_view.add_child(TerrainLayer.new())
     _resize()
 
 func _resize():
@@ -275,44 +262,15 @@ func _draw():
     if size.x<10 or font==null: return
     var started_us=Time.get_ticks_usec()
     render_frames+=1
-    var world_view=Rect2(center-size/(2.0*zoom)-Vector2(100,100),size/zoom+Vector2(200,200))
     draw_rect(Rect2(Vector2.ZERO,size),Color("394f45"))
     var offset=size/2-center*zoom
     draw_set_transform(offset,0,Vector2(zoom,zoom))
-    draw_rect(Rect2(Vector2.ZERO,Terrain.SIZE),Color("858f6a"))
-    for item in grass:
-        if world_view.has_point(item[0]): draw_circle(item[0],item[1],Color(0.28,0.36,0.24,0.2))
-    for contour in cached_hills:
-        draw_polyline(contour,Color(0.85,0.83,0.62,0.27),1.4/zoom,true)
-    draw_polyline(PackedVector2Array([Vector2(700,40),Vector2(680,300),Vector2(700,600),Vector2(690,950),Vector2(700,1290)]),Color("a3a079"),20,true)
-    draw_polyline(PackedVector2Array([Vector2(90,200),Vector2(350,430),Vector2(350,660),Vector2(250,940),Vector2(60,1200)]),Color("a3a079"),13,true)
-    draw_polyline(cached_river,Color("435e50"),78,true)
-    draw_polyline(cached_river,Color("b1b08b"),69,true)
-    draw_polyline(cached_river,Color("538986"),60,true)
-    draw_polyline(cached_river,Color(0.52,0.76,0.72,0.32),38,true)
+    if terrain_view!=null:
+        draw_texture(terrain_view.get_texture(),Vector2.ZERO)
+    # Water glints alone animate over the cached scenery.
     for x in range(10,1390,50):
         var xx=x+fmod(elapsed*8,30)
         draw_line(Vector2(xx,Terrain.river_y(xx)),Vector2(xx+18,Terrain.river_y(xx+18)+2),Color(0.8,0.87,0.75,0.4),1.4,true)
-    for x in Terrain.CROSSINGS:
-        var y=Terrain.river_y(x)
-        draw_rect(Rect2(x-37,y-41,74,82),Color("8d9576") if x==700 else Color(0.65,0.7,0.52,0.35))
-        for j in range(-35,40,14): draw_line(Vector2(x-35,y+j),Vector2(x+35,y+j),Color("b4b48d"),3)
-        if x==700:
-            draw_line(Vector2(x-40,y-42),Vector2(x-40,y+42),Color("d5c9a2"),6)
-            draw_line(Vector2(x+40,y-42),Vector2(x+40,y+42),Color("d5c9a2"),6)
-    for tree in trees:
-        var p=tree[0]; var radius=tree[1]
-        if not world_view.has_point(p): continue
-        draw_circle(p+Vector2(5,7),radius+4,Color(0.13,0.24,0.18,0.32))
-        draw_circle(p,radius,Color("456c48"))
-        draw_circle(p-Vector2(3,4),radius*0.62,Color("749365"))
-    for y in [150.0,1180.0]:
-        for i in range(8):
-            var p=Vector2(605+(i%4)*48,y+floori(i/4.0)*42)
-            draw_colored_polygon(PackedVector2Array([p+Vector2(-18,14),p+Vector2(0,-18),p+Vector2(18,14)]),Color("d3c7a2"))
-            draw_colored_polygon(PackedVector2Array([p,p+Vector2(0,-18),p+Vector2(18,14),p+Vector2(2,14)]),Color("777f64"))
-    for p in [Vector2(260,1015),Vector2(1140,295)]:
-        draw_circle(p,20,Color("c3b88e")); draw_circle(p,13,Color("244b51")); draw_arc(p,17,0,TAU,24,Color("e5d5a9"),3)
     draw_set_transform(Vector2.ZERO,0,Vector2.ONE)
     label(screen(Vector2(700,590)),"TAŞ KÖPRÜ",GOLD,12)
     label(screen(Vector2(350,580)),"SIĞ GEÇİT",Color("d6d8bd"),11)

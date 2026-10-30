@@ -57,7 +57,7 @@ def main():
         if not ui or int(ui[2]): raise RuntimeError('UI test completion not observed')
         ui_results[size] = int(ui[1])
         capture = str(OUT / (label + '.png'))
-        run('visual-'+label, ['xvfb-run','-a',GODOT,'--audio-driver','Dummy','--path',str(ROOT),'--resolution',size,'--','--visual-test','--capture='+capture], 90)
+        run('visual-'+label, ['xvfb-run','-a',GODOT,'--audio-driver','Dummy','--path',str(ROOT),'--resolution',size,'--','--visual-test','--capture='+capture] + (['--mobile-lod'] if label in ('compact','phone-wide') else []), 90)
         if pathlib.Path(capture).stat().st_size < 1000: raise RuntimeError('Empty screenshot')
     summary = {'commit':os.environ.get('GITHUB_SHA'), 'core_passed':int(match[1]), 'core_failed':int(match[2]), 'enet_peers':4, 'ui_passed':ui_results, 'startup_passed':startup_results, 'native_phone':False, 'gpu':'CI software renderer', 'internet_matchmaking':False}
     (OUT/'acceptance.json').write_text(json.dumps(summary,indent=2),encoding='utf-8')

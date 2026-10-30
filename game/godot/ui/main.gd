@@ -70,7 +70,7 @@ func _ready():
     top=PanelContainer.new(); top.add_theme_stylebox_override("panel",box(BG)); add_child(top)
     var head=HBoxContainer.new(); head.add_theme_constant_override("separation",8); top.add_child(head)
     var brand=VBoxContainer.new(); brand.size_flags_horizontal=Control.SIZE_EXPAND_FILL; head.add_child(brand)
-    brand.add_child(text("U Ç M A K",25,GOLD)); brand.add_child(text("CEPHE KOMUTASI  /  0.4.1",10,Color("a6b8a2")))
+    brand.add_child(text("U Ç M A K",25,GOLD)); brand.add_child(text("CEPHE KOMUTASI  /  0.4.2",10,Color("a6b8a2")))
     timer_label=text("00:00",17); head.add_child(timer_label)
     pause_button=button("Ⅱ",func():
         if Session.mode=="local": Session.paused=not Session.paused
@@ -341,7 +341,7 @@ func begin_training():
 func open_menu():
     make_modal()
     modal_box.add_child(text("U Ç M A K",34,GOLD))
-    modal_box.add_child(text("CEPHE KOMUTASI  ·  GODOT 0.4.1",12))
+    modal_box.add_child(text("CEPHE KOMUTASI  ·  GODOT 0.4.2",12))
     if Session.phase=="battle":
         paragraph("Tek parmak: seç / kaydır. İki parmak: yakınlaş / uzaklaş. Hat çizmek için bir kanat seç. Ordu ile toplu ilerle; bir bölüğü seçerek özel görev ver.")
         paragraph("Geçidi kontrol et veya düşmanın düzenli savaşma gücünü kır. R: yedek, altın nokta: bağımsız görev, çubuk: moral. Ağ maçında menü oyunu durdurmaz.")

@@ -2,7 +2,7 @@ config_version=5
 
 [application]
 config/name="UÇMAK — Cephe Komutası"
-config/version="0.4.1"
+config/version="0.4.2"
 run/main_scene="res://main.tscn"
 config/features=PackedStringArray("4.5", "GL Compatibility")
 
