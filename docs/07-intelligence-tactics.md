@@ -1,11 +1,7 @@
 # Sürekli istihbarat ve koşullu taktikler
-## Bilgi akışı (CK3 olay sistemi değil)
-Ekranın yanındaki canlı metin akışında keşif raporu, casus bilgisi, ulak, yerel haber ve söylenti görülür; raporun saati, kaynağı ve kesinlik değerlendirmesi bulunabilir. Oyun oyuncunun yerine sonuç çıkarmaz; birbirine zıt raporlar mümkündür. Tıklayınca haritadaki ilişikli yer/birlik gösterilir. Akış simülasyonun çıktısıdır; ayrı rastgele event kartları veya seçenek pencereleri değildir.
-## Haritada uygulanabilir taktikler
-Hat yarma, hattı tutma, sahte ricat, pusu, gece tacizi, konvoy baskını, geçit tutma, kuşatma/çifte çevirme, düzenli geri çekilme, komuta hedefi baskını. Her biri gerçek zamanlı emir ve birim hareketi: rol/donanım, uzmanlık, moral, emir uyumu, komutan, yer, görüş, ikmal, hareket ve risk koşulları. Emrin başarısı durumdan çıkar, hiçbir 'taktik kartı' savaşı otomatik çözmez.
-## Birleşecek sistemler
-Keşif + casus + ulak + söylenti + karşı istihbarat = tek kaynaklı **bilgi modeli**, farklı bilgi toplama kanalları.
-Moral + dinçlik + sağlık + stok = tek **bölük durum gösterimi**, veri nedenleri ayrı.
-Hat/kanat/toplu emir + tek bölük emri = tek **hiyerarşik emir sistemi**.
-Arazi + hava + mevsim = tek **dünya koşulları** altyapısı.
-Kuyu/nehir + konvoy + kamp + hastalık = tek **somut kaynak/lojistik** altyapısı.
+## Bilgi akışı
+Keşif, casus, ulak, söylenti ve yerel haber aynı bilgi modelinin kaynaklarıdır. Ekran kenarında zaman, kaynak ve belirsizlik içeren metin akışı; oyuncu değerlendirir. CK3 tarzı olay kartları yok.
+## Görünmeyen casus mekanikleri — 2026-10-30 kararı
+**Casuslar oyun dünyasında görünür ünite/sprite olarak yer almayacak.** Casus görevi arayüzden/istihbarat panelinden verilebilir; yer, süre, erişim, risk ve karşı istihbarat koşullarıyla simüle edilir. Sonuç kanıt/rapor veya kaynak durumunda ortaya çıkar. Keşif birlikleri ise haritada görülebilir askerî bölüklerdir. Casuslara ayrı bireysel hareket AI'si yok; görünmeyen mekanik oyuncu için otomatik başarı da değildir.
+## Taktikler
+Hat yarma, tutma, sahte ricat, pusu, gece tacizi, ikmal baskını, geçit savunması, çevirme, ricat ve komuta hedefi baskını gerçek zamanlı emirlerdir. Teçhizat, uzmanlık, cesaret, komutan, arazi, bilgi ve ikmal koşullarına bağlıdır. Ayrı olay kartları veya garantili sonuç yok.
