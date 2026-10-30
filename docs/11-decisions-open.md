@@ -1,0 +1,5 @@
+# UÇMAK — kararlaştırılanlar ve açık başlıklar (2026-10-30)
+## Kararlar
+Mobil odaklı gerçek zamanlı tarihsel sefer ve cephe yönetimi; tekil asker seçilmeyecek. Bölükler (~100 referans) ve komuta hiyerarşisi. Savaş öncesi puanlı hazırlık, sefer sırasında kaynak ve taktik kontrolü, savaş sonrası kalıcı görev tecrübesi. Teçhizat, tarihsel birlik kökü ve ana uzmanlık ayrı; alt beceriler yok; eylem XP'si 2–3 ilgili ana alana dağılabilir. Moral, cesaret, disiplin, komutan karakteri ve emir uyumu. Hava/mevsim ve topoğrafya bütün ilgili süreçleri etkiler. Kuyu/nehir somut seçilebilir su kaynakları; akış yönü ve karşı müdahale; hastalık koşullardan doğar. Bilgi savaşı, yerel köy/eşkıya grupları, koşullu Sun Tzu taktikleri. Başlangıç 1402 Osmanlı; Timurlular ve diğer dönemler sonra.
+## Açık
+1402 birlik tiplerinin kaynaklı tarih araştırması; 30–150 personel aralığının onayı; ana uzmanlık listesi ve XP denge; komutan davranış formülleri; su akışı/sağlık; ekonomik denge; motor ve gerçek mobil performans testleri. Bu kayıtlar tasarım, kod/test tamamlanmış değil.
