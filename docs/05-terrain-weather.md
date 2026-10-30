@@ -1,0 +1,2 @@
+# Arazi, hava, mevsim
+Haritada nehir, kuyu, yol, geçit, vadi, orman, tepe, bataklık, köy ve kamp fiziksel nesnelerdir. Yağmur: çamur, debi, taşıma; kar: hareket ve ısınma; sis: keşif/görüş; sıcaklık: su ve atlar; rüzgâr: ok/duman; gece: nöbet, uyku, baskın; güneş: görüş. Etkiler soyut genel buff değil, somut mesafe, geçit, ikmal, dinçlik ve görüş sonuçlarıdır. Hava koşulları zamana ve mevsime bağlı değişir. Mekanik katsayıları açık.
