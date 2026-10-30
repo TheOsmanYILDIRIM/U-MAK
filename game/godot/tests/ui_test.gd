@@ -61,5 +61,20 @@ func run(root) -> bool:
     root.close_modal()
     check(not root.is_menu_open,"report history closes back to live battle")
     await root.get_tree().process_frame
+    var physical_scale=float(root.get_window().size.y)/root.size.y
+    var tab_height=root.dock_content.get_child(0).get_child(0).size.y*physical_scale
+    print("TOUCH_METRIC physical_scale=",physical_scale," tab_height_px=",tab_height)
+    check(tab_height>=44,"primary hit targets remain at least 44 output pixels")
+    f.selected_unit=6; root.rebuild_dock()
+    await root.get_tree().process_frame
+    await root.get_tree().process_frame
+    check(root.dock.position.y+root.dock.size.y<=root.size.y+2,"individual company panel stays inside viewport")
+    check(root.dock_scroll.horizontal_scroll_mode==ScrollContainer.SCROLL_MODE_DISABLED and root.dock_content.size.x<=root.dock_scroll.size.x+1,"command content has no horizontal clipping")
+    root.dock_scroll.ensure_control_visible(root.command_options.get_child(0))
+    await root.get_tree().process_frame
+    check(root.command_options.get_global_rect().end.y<=root.dock.get_global_rect().end.y+1,"scroll exposes bottom company controls")
+    root.show_details()
+    check(root.is_menu_open and root.modal_box.get_child_count()>10,"company detail shows all ten skills")
+    root.close_modal(); f.select_wing(1)
     print("UI_RESULT passed=",passed," failed=",failed," viewport=",root.size)
     return failed==0

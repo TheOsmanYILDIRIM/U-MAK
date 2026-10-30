@@ -6,6 +6,7 @@ const GOLD=Color("e1cb91")
 var field
 var top: PanelContainer
 var dock: PanelContainer
+var dock_scroll: ScrollContainer
 var dock_content: VBoxContainer
 var action_grid: GridContainer
 var feed: Button
@@ -40,7 +41,7 @@ func text(value:String,size_px:int=16,color:Color=Color("dce5d5")) -> Label:
     return l
 
 func button(value:String,callback:Callable,accent:bool=false) -> Button:
-    var b=Button.new(); b.text=value; b.custom_minimum_size=Vector2(0,50)
+    var b=Button.new(); b.text=value; b.custom_minimum_size=Vector2(0,60)
     b.size_flags_horizontal=Control.SIZE_EXPAND_FILL
     b.add_theme_stylebox_override("normal",box(GOLD if accent else Color("204139")))
     b.add_theme_stylebox_override("hover",box(Color("31584a")))
@@ -74,7 +75,12 @@ func _ready():
     var menu=button("≡",open_menu); menu.custom_minimum_size.x=46; head.add_child(menu)
     dock=PanelContainer.new(); dock.add_theme_stylebox_override("panel",box(BG)); add_child(dock)
     dock.minimum_size_changed.connect(func():call_deferred("layout_ui"))
-    dock_content=VBoxContainer.new(); dock_content.add_theme_constant_override("separation",8); dock.add_child(dock_content)
+    dock_scroll=ScrollContainer.new()
+    dock_scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED
+    dock_scroll.follow_focus=true
+    dock.add_child(dock_scroll)
+    dock_content=VBoxContainer.new(); dock_content.size_flags_horizontal=Control.SIZE_EXPAND_FILL
+    dock_content.add_theme_constant_override("separation",8); dock_scroll.add_child(dock_content)
     feed=button("KEŞİF  •  Raporlar burada akacak.",show_reports)
     feed.alignment=HORIZONTAL_ALIGNMENT_LEFT
     feed.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
@@ -118,17 +124,17 @@ func layout_ui():
     if field==null: return
     var landscape=size.x>size.y*1.15
     if is_instance_valid(action_grid): action_grid.columns=2 if landscape else (3 if field.selected_unit>=0 else 4)
-    top.position=Vector2(8,8); top.size=Vector2(size.x-16,72)
+    top.position=Vector2(8,8); top.size=Vector2(size.x-16,84)
     if landscape:
-        dock.position=Vector2(size.x-300,88); dock.size=Vector2(292,size.y-96)
-        field.position=Vector2(0,84); field.size=Vector2(size.x-308,size.y-84)
+        dock.position=Vector2(size.x-316,100); dock.size=Vector2(308,size.y-108)
+        field.position=Vector2(0,96); field.size=Vector2(size.x-324,size.y-96)
         feed.position=Vector2(12,size.y-82); feed.size=Vector2(maxf(150,field.size.x-146),70)
     else:
-        var height=maxf(396.0 if field.selected_unit>=0 else 344.0,dock.get_combined_minimum_size().y)
+        var height=404.0 if field.selected_unit>=0 else 352.0
         dock.position=Vector2(8,size.y-height-8); dock.size=Vector2(size.x-16,height)
-        field.position=Vector2(0,84); field.size=Vector2(size.x,dock.position.y-88)
+        field.position=Vector2(0,96); field.size=Vector2(size.x,dock.position.y-100)
         feed.position=Vector2(12,dock.position.y-78); feed.size=Vector2(maxf(150,size.x-146),66)
-    toast.position=Vector2(22,95); toast.size=Vector2(field.size.x-44,48)
+    toast.position=Vector2(22,108); toast.size=Vector2(field.size.x-44,48)
     if is_instance_valid(modal):
         modal.position=Vector2.ZERO; modal.size=size
         var panel=modal.get_child(0)
@@ -206,7 +212,7 @@ func rebuild_dock():
         options.add_child(button("← Kanat",func():field.select_wing(field.selected_wing)))
     else:
         options.add_child(button("Yön çevir",func():wing_order("flip")))
-        var initiative=OptionButton.new(); initiative.custom_minimum_size=Vector2(100,44)
+        var initiative=OptionButton.new(); initiative.custom_minimum_size=Vector2(100,60)
         for s in ["Sıkı emir","Dengeli","Serbest","Karma"]: initiative.add_item(s)
         initiative.set_item_disabled(3,true)
         var w=field.wing()
@@ -222,6 +228,7 @@ func rebuild_dock():
     confirm_row.add_child(button("✓ Hattı onayla",func():field.confirm(),true))
     confirm_row.add_child(button("Vazgeç",func():field.cancel()))
     preview_label=text("",12,GOLD); preview_label.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART; dock_content.add_child(preview_label)
+    dock_scroll.scroll_vertical=0
     update_preview(); update_status(); layout_ui()
 
 func update_preview():
@@ -320,7 +327,7 @@ func open_menu():
         paragraph("Bir hattı yönet. Bir bölüğü göreve ayır. Yedeğin boşluğu kapatsın.\n\n18 dost ve 18 düşman bölüğü; nehir, keşif, moral ve gerçek zamanlı komuta.")
         modal_box.add_child(button("Talime başla  ·  AI rakip",func():Session.offline(),true))
         modal_box.add_child(button("Oda kur  ·  2–4 oyuncu",func():Session.host()))
-        address=LineEdit.new(); address.placeholder_text="Sunucu IP adresi"; address.text="127.0.0.1"; address.custom_minimum_size.y=48
+        address=LineEdit.new(); address.placeholder_text="Sunucu IP adresi"; address.text="127.0.0.1"; address.custom_minimum_size.y=60
         modal_box.add_child(address)
         modal_box.add_child(button("Odaya katıl",func():Session.join(address.text)))
         paragraph("Doğrudan ENet bağlantısı. İnternet eşleştirme / oda kodu servisi henüz yok. Aynı Wi-Fi üzerinde ev sahibinin gösterilen IP adresini kullan. Her oyuncuda aynı build olmalı.")
