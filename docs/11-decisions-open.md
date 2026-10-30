@@ -1,4 +1,50 @@
-# UÇMAK — kararlar ve açık konular (2026-10-30)
+# UÇMAK — kararlar ve açık konular
+
+## Güncel durum — 2026-10-30 / Godot oynanabilir alfa 0.4.1
+**Kullanıcı hedefi:** HTML komuta taslağını Godot'a geçirmek, build/testleri GitHub'da yapmak ve oynanabilir çıktıya ulaşmak. Motor artık Godot'tur; eski motor-kararsızlığı kayıtları tarihsel durumdur. Uzun vadeli tasarımın tamamı uygulanmış sayılmaz.
+
+**Konum:** `TheOsmanYILDIRIM/U-MAK`, yetkili çalışma dalı `game/godot-playable-20261030`, kaynak `game/godot/`, CI `.github/workflows/godot.yml`. Main'e merge/force yapılmadı. Mevcut `README.md`, bu belge ve ilgili konu belgeleri kanoniktir; yeni TASKS/SESSION_HANDOFF veya mükerrer Beyin görevi oluşturulmadı.
+
+### Son doğrulanan oyun ve teslim
+- Oyun commit'i: `a0ccdcf98d9818a9640fcd4cc0c0e439e4ce0703`.
+- CI: https://github.com/TheOsmanYILDIRIM/U-MAK/actions/runs/41122483114
+- Release: https://github.com/TheOsmanYILDIRIM/U-MAK/releases/tag/ucmak-0.4.1-8
+- Godot 4.5.2; Android ARM64 debug APK, native Linux release, source ZIP, dört ekran PNG'si, `acceptance.json` ve SHA256SUMS mevcut.
+- APK 27,661,586 bayt; SHA-256 `618da48ac5fc847b0b19f5624bbe7df233df72370dca184a0eb4df1fe0a885be`.
+- Linux ZIP SHA-256 `b9cb66c0ffc40b5b790fb4252cb4b3d0fb109df6f7a72d9fe872903ae98ddd44`.
+- Kaynak ZIP SHA-256 `eb06b2deb21918cfbd66b225b028b195568c9dd14fc82b46f7fe1de184363bd7`.
+- CI build artifact `13008862918` ve kabul artifact `13009181810` indirildi, açıldı, CRC ve SHA-256 denetlendi. APK içindeki native ARM64 kitaplıkları kontrol edildi; kaynak ZIP son dokunmatik düzeltmeyi içeriyor. Gizli anahtar/kullanıcı verisi kaynak pakete eklenmedi.
+
+### Tamamlanan oynanabilir çekirdek
+- 36 bölük, iki ordu, AI talimi, 10 dakikalık maç/zafer-beraberlik-sonuç ve yeniden oynama akışı.
+- Kalıcı hat planı, otomatik dağıtım, fiziksel yedek devri, özel görevi koruma, geri çağırma; ordu seçimiyle kanat aralıklarını bozmadan ilerleme. Sıkı/dengeli/serbest inisiyatif ve üç komutan profili prototipi.
+- Piyade/mızraklı/okçu/süvari prototip rolleri, menzilli ve yakın muharebe, moral/çözülme, dinçlik, kayıplar ve yaralılar. Bunlar henüz kaynaklı 1402 kadrosu değildir.
+- Fiziksel kuyu/nehir kıyısı seçimi, su/erzak tüketimi, kampta basit bakım; geçit/köprüye rota, orman/tepe etkisi ve basit yağmur döngüsü. Tam akış/ikmal ağı değildir.
+- Savaş sisiyle filtrelenmiş görünür bilgi, son görülen konum, kaynak/zaman gösteren rapor defteri ve rapordan konuma gitme.
+- 10 uzmanlık alanı korunuyor. Muharebe, yeni keşif teması, gerçek ikmal ve bakım faaliyetleri XP üretir; bütün uzmanlıkların nihai eylem/denge kapsamı henüz tamamlanmadı.
+- Doğrudan IP/ENet üzerinden 2–4 oyuncu; tek otorite, görev sahipliği, filtreli snapshot, istemci ayrılınca müttefik/AI devri. İki taraflı takım düzeni; serbest herkes-herkese modu yok.
+
+### Doğrulama kanıtı
+- GitHub çekirdek: **56 geçti / 0 başarısız**; aynı seed tekrarı, üç dakikalık AI muharebesi, fiziksel geçit rotası, kaynak ve görev regresyonları dahil.
+- Ağ: **4 gerçek Godot/ENet süreci**, 3 istemci; kabul edilen 3 yetkili emir, reddedilen 3 yetkisiz emir; snapshot parçaları en çok 900 bayt.
+- UI: **24 × 4 = 96 kontrol geçti**; 480×960, 1200×800, 360×640, 844×390. Pinch iptali, kamera, hat önizlemesi/onayı, ordu seçimi, raporlar, tek bölük panelinin kaydırılması ve 10 uzmanlığın ayrıntısı dahil.
+- Önceki build 6 görüntüsünde yatay kontrol ölçeği küçük bulundu; kare taban viewport ve kaydırılabilir panel ile düzeltildi. Yeni CI'da ana kontrol yüksekliği küçük dikeyde ~45, yatay telefonda 48.75 çıktı pikseli. Gerçek telefon DPI ölçümü değildir.
+- CI Godot PNG'leri açıldı; küçük dikey ve yatay telefon görünümü incelendi. Görseller yazılımsal OpenGL çıktısıdır, telefon ekran kaydı değildir.
+- Android export tamamlandı; v2/v3 APK imzası doğrulandı. Linux export headless başlangıç kontrolü geçti. Geliştirme imzası önbellekle korunuyor; mağaza imzası değildir. Önbellek kaybında eski kurulumun verisini silmeden önce yedek gerekir.
+
+### Açık işler / sonraki kabul
+1. **Cihaz kabulü:** gerçek Android'de kurulum, açılış, pinch/hat/bölük seçimi, çentik/güvenli alan, 10 dakikalık oyun ve FPS/termal/batarya. Bu oturumda fiziksel cihaz erişimi yok; yapılmış sayma.
+2. **Gerçek çok cihazlı ağ:** aynı Wi-Fi'da 2 ve 4 cihaz, bağlantı kaybı/geri dönüş, gecikme ve uzun maç. Dört masaüstü süreç testi bunun yerine geçmez. Eşleştirme, oda kodu, hesap, yeniden bağlanma ve ev sahibi göçü açık.
+3. **Sefer döngüsü:** puanlı hazırlık/deneyimli asker sınırı, kalıcı birlik geçmişi/kayıt, takviye ve sonraki sefer. Kabul: kayıt geri açıldığında personel, donanım ve XP tutarlı olmalı.
+4. **Tasarım kapsamı:** görünmeyen casus görevleri, tepkisel yerel AI, konvoy/ikmal ağı, tam sağlık/çevre/akış ve mevsim; her biri ayrı mekanik kabulüyle eklenmeli. Hiçbiri onaylı kapsamdan silinmedi.
+5. **İçerik/denge/ölçek:** kaynaklı 1402 kadrosu, kalan komutan profilleri, bütün uzmanlıkların anlamlı görevleri, 100 bölüklü yük ve maç dengesi. Geçici rol/AI şablonlarını tarihsel kanıt veya nihai tasarım sayma.
+
+**Devam kuralı:** tamamlanan komuta çekirdeğini yeniden yazma. Önce dal HEAD'i, açık PR, CI ve bu kayıt doğrulanır. Sonraki kod değişikliğinde regresyonlar korunur; build kaynak commit'i ile belge commit'i ayrı belirtilir. Geçici sohbet dosyaları yerine repo/release kullanılır.
+
+---
+# Tasarım kararları ve v0.3 geçmişi — tarihsel kayıt
+Aşağıdaki v0.3 test/motor/CI ifadeleri o teslim tarihindeki durumu anlatır; güncel uygulama ve açık kapılar yukarıdadır.
+
 ## Kesinleşen tasarım yönü
 - Mobil öncelikli, gerçek zamanlı tarihi sefer ve cephe komutanlığı; tekil asker seçimi, şehir/teknoloji geliştirmesi ve devlet yönetimi yok.
 - Bölük en küçük mantıksal birim: ~100 referans; 30–150 esnek aralık önerisi henüz nihai değil. Görsel sprite sayısı asker sayısı değildir. Başkomutan → kanat/kol → ara grup → yüzbaşı/bölük hiyerarşisi; 1402'de dönemsel unvanlar araştırılacak.
