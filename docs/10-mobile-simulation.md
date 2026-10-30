@@ -1,0 +1,2 @@
+# Mobil simülasyon
+3.000–10.000+ askerin her birini hesaplama; en küçük mantıksal birim bölük (~100 kişi referans). Üst komuta hiyerarşisi ve kaynak/yol/nehir grafiği. 100 kişiyi örneğin 12–20 sprite temsil edebilir; görüntüde yorgunluk animasyonu, moral/formasyon, çeşitlilik, ekipman, kayıpla azalan görünür yoğunluk. Sprite başına AI/istatistik yok. Olay bazlı ve farklı frekanslı ikmal/sağlık/XP güncellemesi; toplu çizim/obje havuzu aday. Hedef mobil akıcılık, henüz benchmark/cihaz kanıtı yok. Motor seçilmedi.
