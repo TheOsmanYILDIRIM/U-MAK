@@ -16,7 +16,7 @@ env:
   GODOT_SILENCE_ROOT_WARNING: 1
 jobs:
   acceptance:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -44,7 +44,7 @@ jobs:
           if-no-files-found: error
   export:
     needs: acceptance
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
@@ -104,7 +104,7 @@ jobs:
   prerelease:
     if: github.event_name == 'push'
     needs: [acceptance, export]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
