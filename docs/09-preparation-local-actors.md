@@ -1,11 +1,9 @@
-# Savaş öncesi hazırlık, savaş sonrası ve yerel aktörler
+# Savaş öncesi, sonrası ve yerel aktörler
 ## Hazırlık
-Savaş öncesinde sınırlı hazırlık puanı; personel sayısı, deneyimli asker kontenjanı, silah/zırh, at, yem, erzak, taşınabilir su, ikmal araçları, komutan ve özel birlik seçimi. Tek bütçe oyuncuya okunabilir seçim sunar; fiziksel kapasite, ağırlık ve erişim kısıtları ayrıca geçerlidir. Örnek: fazla su = daha çok taşıma ve yavaşlama; daha çok zırh = maliyet/ağırlık; daha çok seçkin asker = daha az toplam mevcudu göze almak. Katsayılar belirsiz.
-## Sefer ve savaş
-Age of Empires benzeri gerçek zamanlı bölük/üst komutan emirleri; kontrol edilen alanlarda köy, otlak, kuyu, nehir, geçit ve konvoylar vardır. Geliştirme/teknoloji ağacı veya devlet yönetimi yok. Muharebesiz geri çekilmeye zorlama, teslim veya ikmal çökertme zafer senaryosu olabilir.
+Sınırlı puan: personel, deneyimli asker kontenjanı, ekipman, at, yem, erzak, su, taşıma ve komutan. Fiziksel ağırlık, stok ve hız ayrıca geçerlidir; daha çok su daha çok taşıma maliyeti yaratır. Devlet/teknoloji yönetimi yok.
 ## Savaş sonrası
-Hayatta kalan bölükler görevle ilgili tecrübe kazanır; keşifte başarılı olan keşifte, savunmada başarılı olan savunmada uzmanlaşır. Komutan ayrı gelişir. Acemi takviyeler bölük hafızasını seyreltir, tecrübeli personel korumak değerlidir. Yaralı, personel, donanım ve teçhizat kaybı sonraki seferi etkiler; hızlandırılmış oyun zamanı gerçekçilikle dengelenir.
-## Yerel aktörler
-Köy, göçer topluluk, eşkıya, bağımsız savaşçı grubu ve yerel rehber/haber kaynağı. Büyük diplomasi veya devlet yönetimi yok. Köylere ilişkin seçenekler: ücret karşılığı erzak, rehberlik, barınma, yerel haber; zorla alma yağma yerel güveni ve gelecekteki erişimi bozabilir. Eşkıya konvoy tehdidi veya geçici pazarlık/çatışma unsurudur. İlişkiler sade, yerel ve gözlenebilir davranış temelli.
+Hayatta kalan bölükler ilgili görev uzmanlıklarını; komutanlar ayrı becerilerini geliştirir. Yaralı, kayıp, gazi personel ve teçhizat farkı sonraki seferi etkiler.
+## Yerel AI birlikleri — 2026-10-30 kararı
+Köyler, göçerler, eşkıya/bağımsız küçük gruplar başlangıçta haritaya rastgele/seed kontrollü dağıtılabilir. **Bunlar komut ve hareketlere tepki veren AI kontrollü aktörlerdir**, yalnızca statik etkileşim menüleri değildir. Yaklaşan orduyu gözler, kaçabilir, savunabilir, haber verebilir, ticaret yapabilir veya saldırabilir; davranış ilişkiler, güç dengesi, kaynak ihtiyacı ve yakın tehlikeden çıkar. Tam devlet diplomasisi yok. Multiplayer'da aynı aktörün kararını otoriter simülasyon üretmeli; yerel AI hesapları yakınlık/aktiviteye göre seyreltilir.
 ## Açık
-Bütçe katsayıları, yerel aktör seçenekleri ve savaş sonrası ilerleme/kalıcılık sınırları denge aşamasında netleştirilecek.
+Dağılım kuralları, aktör ölçeği, tepki eşiği ve maliyetler henüz onaylı değil.
