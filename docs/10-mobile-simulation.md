@@ -1,4 +1,17 @@
-# Mobil ve çok oyunculu simülasyon — Godot alfa 0.4.1
+# Mobil simülasyon — Android başlangıç performans düzeltmesi v0.4.2
+
+**Kullanıcı hatası (30.10.2026):** 0.4.1 Android cihazında “Talime başla” ile uygulama kilitleniyor. Linux ve CI simülasyon açılışı çalışıyordu; Android donmasının kök nedeni cihaz logu olmadan kesinleşmiş değil.
+
+**Saptanan gerçek yük:** Menü ve muharebede her kare bütün dünya: ağaçlar, arazi çizgileri, nehir ve çok sayıda görsel asker tekrar çiziliyordu. Yazılımsal görüntüleme yüksek CPU tüketiyordu.
+
+**Değişiklikler (c39bec0):** Statik arazi `ui/terrain_layer.gd` içinde SubViewport.UPDATE_ONCE ile bir kez dokuda hesaplanıp savaş tuvaline resim olarak çiziliyor. Birimler/işaretler hareketli kalıyor. Mobil LOD, 30 FPS hedefi, menüde gereksiz redraw azaltımı, 20Hz simülasyonda tur başına en fazla 6 yeni rota ve eğitim başlangıç logları eklendi. 0.4.2 Android versionCode=6. Oyun kuralları ve komuta sistemindeki önceki davranışlar korunuyor.
+
+**GitHub Actions 41126336700 — başarılı:** 58 çekirdek, dört Godot/ENet bağlantısı, 96 UI, dört çözünürlükte 12'şer “Talime başla” testleri (=48). Dışa aktarılan Linux oyununda `SMOKE_TRAINING_PASS`; Android ARM64 APK v2/v3 imza doğrulandı. Snapshot görüntülerinde mobil düşük ayrıntı yolu test edildi. SHA dosya+APK arşiv bütünlüğü ve 0.4.1 ile aynı sertifika denetlendi.
+
+**Açık / blocking acceptance:** Gerçek kullanıcı Android cihazında sahne geçişi ve 10 dakikalık oyun, FPS/frametime, GPU/termal, çentik, 2–4 fiziksel cihazlı ağ ve Android logcat. Bu testler olmadan kullanıcıdaki kilitlenme `fixed` değil `pending_device_verification`.
+
+---
+## Önceki v0.4.1 mimari ve kabul kayıtları
 
 ## Uygulanan mimari
 Kullanıcının Godot kararıyla motor seçildi; doğrulanan sürüm **Godot 4.5.2**, 2D Compatibility renderer. Proje `game/godot/`, otomasyon `.github/workflows/godot.yml`. Üretim sürümü güncellemesi ayrıca CI/cihaz kabulü gerektirir.

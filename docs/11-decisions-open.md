@@ -1,3 +1,17 @@
+# Android “Talime başla” kilitlenmesi — 0.4.2 durum (2026-10-30)
+
+**Rapor:** Kullanıcı 0.4.1 APK'da “Talime başla” sonrası kilitlendiğini bildirdi. Gerçek telefon GPU/logcat erişimi olmadığından aynı hata laboratuvarda kesin olarak tekrarlanamadı. 0.4.1 Linux oyununu butondan açıp 12 saniye çalıştırdık; ağır tekrar çizim ve yüksek yazılımsal CPU yükü belirlendi.
+
+**Güvenli çözüm dalı:** `game/godot-playable-20261030`; oyun commit'i `c39bec0bc47bed20485511b736d4f8c4d2ee83fd`; main'e birleştirme yapılmadı.
+- İlk adım `6ac8d5c`: mobil LOD/FPS sınırı, yol planlama bütçesi, yeniden girişte çift oturum sıfırlamayı önleme, başlangıç günlükleri, `startup_test.gd`.
+- İkinci adım `c39bec0`: `ui/terrain_layer.gd` aracılığıyla SubViewport'ta tek defa statik arazi çizimi, dünya render yükünü azaltma, 0.4.2 sürüm ve versionCode 6.
+- CI: https://github.com/TheOsmanYILDIRIM/U-MAK/actions/runs/41126336700 — **58/58 çekirdek**, **4 ENet süreç**, **96/96 UI**, **48/48 başlangıç kontrolü**; Android/Linux export başarılı; Linux export `SMOKE_TRAINING_PASS` ve 12 saniye canlı görüntü kontrolü geçti.
+- Release: https://github.com/TheOsmanYILDIRIM/U-MAK/releases/tag/ucmak-0.4.2-12
+- APK boyutu 27.665.833 B; SHA-256 `af13c94596e64d1640221d1c9f5b263294f3698ce10eec167778adbeefcd994e`. ZIP/artefaktlar geri açılıp CRC, yayınlanan SHA256SUMS ve APK v2/v3 imzası doğrulandı. Önceki 0.4.1 ile imza sertifikası aynı.
+
+**Kabul durumu:** Kod/CI/derleme `passed`; kullanıcı Android donma sorunu `pending_device_verification`. Cihazda yeniden denenirse sonuç, model, Android sürümü, donma/siyah ekran ayrımı ve mümkünse `logcat` geri alınmalı. Başarısız olursa aynı dalda kanıta dayalı düzeltme yapılmalı. Yeni mekanik geliştirmelerine başlanmadı. Mevcut kararlar/önceki başarı kayıtları aşağıda korunur.
+
+---
 # UÇMAK — kararlar ve açık konular
 
 ## Güncel durum — 2026-10-30 / Godot oynanabilir alfa 0.4.1
