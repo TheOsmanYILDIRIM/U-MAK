@@ -1,0 +1,26 @@
+name: UCMak Godot headless checks
+on:
+  push:
+    branches: ["main", "experiment/**"]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: chickensoft-games/setup-godot@v2.4.3
+        with:
+          version: 4.4.1
+          use-dotnet: false
+      - name: Godot version
+        run: godot --version
+      - name: Import scripts and scenes
+        run: godot --headless --path . --editor --import --quit
+      - name: Simulation regression suite
+        run: godot --headless --path . --script res://tests/test_sim.gd
+      - name: Main scene boots
+        run: godot --headless --path . --quit-after 30
