@@ -14,8 +14,13 @@ func run(root:Control) -> bool:
     var t0=Time.get_ticks_msec()
     check(Session.phase=="menu" and root.is_menu_open,"initial menu is visible")
     check(is_instance_valid(root.training_button) and root.training_button.visible,"actual training button exists")
+    check(bool(ProjectSettings.get_setting("input_devices/pointing/emulate_mouse_from_touch", false)),"touchscreen taps reach Control buttons")
     var before=Session.battle.tick
-    root.training_button.pressed.emit()
+    var touch=InputEventScreenTouch.new()
+    touch.index=0; touch.position=root.training_button.get_global_rect().get_center(); touch.pressed=true
+    Input.parse_input_event(touch)
+    await root.get_tree().process_frame
+    touch.pressed=false; Input.parse_input_event(touch)
     await root.get_tree().process_frame
     await root.get_tree().process_frame
     await root.get_tree().process_frame
