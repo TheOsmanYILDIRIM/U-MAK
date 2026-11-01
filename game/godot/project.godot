@@ -1,0 +1,33 @@
+config_version=5
+
+[application]
+config/name="UÇMAK — Cephe Komutası"
+config/version="0.4.2"
+run/main_scene="res://main.tscn"
+config/features=PackedStringArray("4.5", "GL Compatibility")
+
+[autoload]
+Session="*res://core/session.gd"
+
+[display]
+window/size/viewport_width=480
+window/size/viewport_height=480
+window/size/window_width_override=1200
+window/size/window_height_override=800
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/handheld/orientation=6
+
+[rendering]
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/default_filters/use_nearest_mipmap_filter=false
+textures/vram_compression/import_etc2_astc=true
+environment/defaults/default_clear_color=Color(0.035, 0.07, 0.075, 1)
+
+[input_devices]
+pointing/emulate_touch_from_mouse=false
+pointing/emulate_mouse_from_touch=true
+
+[physics]
+common/physics_ticks_per_second=20
