@@ -46,13 +46,15 @@ func _ready():
     mobile_lod=OS.has_feature("mobile") or OS.get_name()=="Android" or OS.get_cmdline_user_args().has("--mobile-lod")
     cached_tag=tag_style()
     resized.connect(_resize)
-    terrain_view=SubViewport.new()
-    terrain_view.name="TerrainCache"
-    terrain_view.size=Vector2i(1400,1320)
-    terrain_view.disable_3d=true
-    terrain_view.render_target_update_mode=SubViewport.UPDATE_ONCE
-    add_child(terrain_view)
-    terrain_view.add_child(TerrainLayer.new())
+    # Physical Android uses the low-memory procedural field. No startup render target allocation.
+    if not mobile_lod:
+        terrain_view=SubViewport.new()
+        terrain_view.name="TerrainCache"
+        terrain_view.size=Vector2i(1400,1320)
+        terrain_view.disable_3d=true
+        terrain_view.render_target_update_mode=SubViewport.UPDATE_ONCE
+        add_child(terrain_view)
+        terrain_view.add_child(TerrainLayer.new())
     _resize()
 
 func _resize():
@@ -267,6 +269,18 @@ func _draw():
     draw_set_transform(offset,0,Vector2(zoom,zoom))
     if terrain_view!=null:
         draw_texture(terrain_view.get_texture(),Vector2.ZERO)
+    else:
+        # Safe Android LOD: few strokes, no offscreen texture and no per-tree drawing.
+        draw_rect(Rect2(Vector2.ZERO,Vector2(1400,1320)),Color("858f6a"))
+        var river_points=PackedVector2Array()
+        for x in range(0,1401,42): river_points.append(Vector2(x,Terrain.river_y(x)))
+        draw_polyline(river_points,Color("4c888a"),62.0,true)
+        for crossing in Terrain.CROSSINGS:
+            var y=Terrain.river_y(crossing)
+            draw_rect(Rect2(crossing-35,y-38,70,76),Color("d1c49d"))
+        for well in [Vector2(260,1015),Vector2(1140,295)]:
+            draw_circle(well,17,Color("d7d1af"))
+            draw_circle(well,11,Color("35646b"))
     # Water glints alone animate over the cached scenery.
     for x in range(10,1390,50):
         var xx=x+fmod(elapsed*8,30)
